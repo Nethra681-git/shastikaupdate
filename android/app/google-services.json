@@ -1,0 +1,92 @@
+{
+  "project_info": {
+    "project_number": "584894894933",
+    "project_id": "shastika-exports",
+    "storage_bucket": "shastika-exports.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:584894894933:android:93273e357604f6a24315dc",
+        "android_client_info": {
+          "package_name": "com.shastika.shastikaapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "584894894933-21d91uuoave2dtu75nlc0a5a0b1ki79j.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.shastika.shastikaapp",
+            "certificate_hash": "50d55f5192599d598be10e613526b396383acb30"
+          }
+        },
+        {
+          "client_id": "584894894933-mb8br3jqugggkrirehs42flb38smr41n.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.shastika.shastikaapp",
+            "certificate_hash": "6270152757f6219a3cd11508ea0f9fb3939fa6db"
+          }
+        },
+        {
+          "client_id": "584894894933-7auh8qgvbfrc0v9rquu1h9daq148v81u.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAV_c-RSU_FDl8BcEk93iu0jnK1ACjcc_g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "584894894933-7auh8qgvbfrc0v9rquu1h9daq148v81u.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:584894894933:android:450f1fbc404a1b054315dc",
+        "android_client_info": {
+          "package_name": "com.shastikaexports.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "584894894933-4fkdv8qa2o7kr5798smcuqcnvahm0rgk.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.shastikaexports.app",
+            "certificate_hash": "50d55f5192599d598be10e613526b396383acb30"
+          }
+        },
+        {
+          "client_id": "584894894933-7auh8qgvbfrc0v9rquu1h9daq148v81u.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAV_c-RSU_FDl8BcEk93iu0jnK1ACjcc_g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "584894894933-7auh8qgvbfrc0v9rquu1h9daq148v81u.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
