@@ -206,9 +206,9 @@ const Marketplace = () => {
     return (
       <div className="premium-card group overflow-hidden flex flex-col transition-all duration-300 hover:shadow-2xl hover:-translate-y-2">
         {/* Product Image Container */}
-        <div className="relative w-full h-56 sm:h-64 bg-slate-200 overflow-hidden">
+        <div className="relative w-full h-56 sm:h-64 bg-gradient-to-br from-primary/5 via-background to-secondary/5 overflow-hidden flex items-center justify-center">
           {hasImageError ? (
-            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-muted/50">
+            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5">
               <Package className="w-12 h-12 text-muted-foreground/50" />
             </div>
           ) : (
@@ -217,7 +217,7 @@ const Marketplace = () => {
               alt={product.name}
               loading="lazy"
               onError={() => handleImageError(product.id)}
-              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+              className="w-full h-full object-contain p-4 drop-shadow-lg group-hover:scale-105 transition-transform duration-300"
             />
           )}
           

@@ -19,13 +19,29 @@ const ProductDetail = () => {
           <ChevronLeft className="w-4 h-4" /> Back to Marketplace
         </button>
         <div className="glass-card rounded-xl overflow-hidden">
-          <div className="h-72 md:h-96 bg-muted overflow-hidden">
+          <div className="h-72 md:h-96 product-showcase overflow-hidden relative">
+            {/* Animated Background — Floating Orbs */}
+            <div className="showcase-orb showcase-orb-1" />
+            <div className="showcase-orb showcase-orb-2" />
+            <div className="showcase-orb showcase-orb-3" />
+
+            {/* Concentric Rings */}
+            <div className="showcase-rings">
+              <div className="showcase-ring showcase-ring-1" />
+              <div className="showcase-ring showcase-ring-2" />
+              <div className="showcase-ring showcase-ring-3" />
+            </div>
+
+            {/* Dot Grid Pattern */}
+            <div className="showcase-dots" />
+
+            {/* Product Image — object-contain */}
             <img
               src={product.image}
               alt={product.name}
               width={640}
               height={640}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain p-6 drop-shadow-2xl relative z-10"
             />
           </div>
           <div className="p-6 space-y-4">

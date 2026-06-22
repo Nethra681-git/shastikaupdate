@@ -11,7 +11,7 @@ export function generatePaymentReceipt(payment: Payment) {
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
-  doc.text('SHASTIKA GLOBAL IMPEX PVT LTD', w / 2, 16, { align: 'center' });
+  doc.text('SHASTIKA GLOBAL IMPEX PVT. LTD', w / 2, 16, { align: 'center' });
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
   doc.text('Payment Receipt', w / 2, 24, { align: 'center' });
@@ -82,7 +82,7 @@ export function generatePaymentReceipt(payment: Payment) {
   doc.rect(0, footerY - 5, w, 25, 'F');
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(8);
-  doc.text('SHASTIKA GLOBAL IMPEX PVT LTD — Agriculture Export Solutions', w / 2, footerY + 5, { align: 'center' });
+  doc.text('SHASTIKA GLOBAL IMPEX PVT. LTD — Agriculture Export Solutions', w / 2, footerY + 5, { align: 'center' });
   doc.text('This is a system-generated receipt.', w / 2, footerY + 11, { align: 'center' });
 
   doc.save(`Receipt_${payment.id}.pdf`);

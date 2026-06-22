@@ -1,11 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { Send, Phone, Video, MoreVertical } from 'lucide-react';
+import { Send, Phone, Video, MoreVertical, MessageSquare } from 'lucide-react';
 import { ChatMessage, Conversation, ChatUser } from '@/lib/socketService';
 import { cn } from '@/lib/utils';
 
@@ -75,11 +72,19 @@ export const ChatWindow = ({
 
   if (!conversation) {
     return (
-      <div className="flex items-center justify-center h-full bg-background">
+      <div className="flex items-center justify-center h-full" style={{
+        background: "linear-gradient(180deg, rgba(15, 46, 29, 0.3) 0%, rgba(10, 35, 22, 0.5) 100%)",
+      }}>
         <div className="text-center">
-          <Send className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-          <h3 className="text-lg font-medium">{t('chat_select_conversation_placeholder')}</h3>
-          <p className="text-sm text-muted-foreground mt-2">
+          <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-5" style={{
+            boxShadow: "0 0 40px rgba(34, 197, 94, 0.1)",
+          }}>
+            <MessageSquare className="w-10 h-10 text-primary/40" />
+          </div>
+          <h3 className="text-lg font-semibold text-foreground/70 mb-1">
+            {t('chat_select_conversation_placeholder')}
+          </h3>
+          <p className="text-sm text-muted-foreground/60">
             Choose a user from the sidebar to begin
           </p>
         </div>
@@ -90,140 +95,160 @@ export const ChatWindow = ({
   const online = isUserOnline(conversation.userId);
 
   return (
-    <div className="flex flex-col h-full bg-background">
-      {/* Chat Header */}
-      <div className="flex items-center justify-between p-4 border-b">
+    <div className="flex flex-col h-full">
+      {/* Chat Header — Glassmorphism */}
+      <div className="flex items-center justify-between px-6 py-4 chat-glass-header">
         <div className="flex items-center gap-3">
-          <Avatar className="h-10 w-10">
-            <AvatarFallback>
-              {conversation.userName.charAt(0).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex-1">
+          <div className="relative">
+            <Avatar className="h-11 w-11 shadow-md">
+              <AvatarFallback className="bg-gradient-to-br from-primary to-primary/60 text-white font-bold">
+                {conversation.userName.charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            {/* Online indicator with pulse */}
+            {online && (
+              <div className="absolute bottom-0 right-0 h-3.5 w-3.5 bg-green-500 rounded-full border-2 border-background online-pulse" />
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <h2 className="font-semibold">{conversation.userName}</h2>
-              <Badge variant="outline" className="text-xs">
-                {conversation.userRole}
-              </Badge>
+              <h2 className="font-semibold text-foreground truncate">{conversation.userName}</h2>
+              <span className="inline-block text-[10px] px-2 py-0.5 rounded-full font-bold bg-primary/15 text-primary">
+                {conversation.userRole.toUpperCase()}
+              </span>
             </div>
-            <div className="text-xs">
+            <div className="text-xs mt-0.5">
               {online ? (
-                <span className="text-green-600 flex items-center gap-1">
-                  <span className="h-2 w-2 bg-green-600 rounded-full" />
+                <span className="text-green-400 flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 bg-green-400 rounded-full" />
                   Active now
                 </span>
               ) : (
-                <span className="text-muted-foreground">Offline</span>
+                <span className="text-muted-foreground/60">Offline</span>
               )}
             </div>
           </div>
         </div>
 
         {/* Header Actions */}
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" className="h-9 w-9">
-            <Phone className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-9 w-9">
-            <Video className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-9 w-9">
-            <MoreVertical className="h-4 w-4" />
-          </Button>
+        <div className="flex items-center gap-1">
+          {[Phone, Video, MoreVertical].map((Icon, i) => (
+            <button
+              key={i}
+              className="w-9 h-9 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-primary/10 transition-all duration-200"
+            >
+              <Icon className="h-4 w-4" />
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Messages Area */}
-      <ScrollArea
-        className="flex-1"
+      {/* Messages Area — Glass Background */}
+      <div
+        className="flex-1 overflow-y-auto px-6 py-4 space-y-3"
         ref={messagesContainerRef as any}
         onScroll={handleScroll}
+        style={{
+          background: "linear-gradient(180deg, rgba(15, 46, 29, 0.3) 0%, rgba(10, 35, 22, 0.5) 100%)",
+        }}
       >
-        <div className="p-4 space-y-4">
-          {loading ? (
-            <div className="flex items-center justify-center h-24">
-              <span className="text-sm text-muted-foreground">Loading messages...</span>
+        {loading ? (
+          <div className="flex items-center justify-center h-24">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <div className="w-5 h-5 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+              <span className="text-sm">Loading messages...</span>
             </div>
-          ) : messages.length === 0 ? (
-            <div className="flex items-center justify-center h-24 text-muted-foreground">
-              <p className="text-sm">No messages yet. Start the conversation!</p>
+          </div>
+        ) : messages.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3">
+            <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
+              <MessageSquare className="w-7 h-7 text-primary/40" />
             </div>
-          ) : (
-            messages.map((message, index) => {
-              const isCurrentUserMessage = message.senderId === currentUserId;
-              const showAvatar =
-                index === 0 ||
-                messages[index - 1].senderId !== message.senderId;
+            <p className="text-sm">No messages yet. Start the conversation!</p>
+          </div>
+        ) : (
+          messages.map((message, index) => {
+            const isCurrentUserMessage = message.senderId === currentUserId;
+            const showAvatar =
+              index === 0 ||
+              messages[index - 1].senderId !== message.senderId;
 
-              return (
+            return (
+              <div
+                key={message.id}
+                className={cn(
+                  'flex gap-3 items-end mb-1 message-animate',
+                  isCurrentUserMessage && 'flex-row-reverse gap-3'
+                )}
+              >
+                {/* Avatar */}
+                {showAvatar ? (
+                  <Avatar className="h-8 w-8 flex-shrink-0 shadow-md">
+                    <AvatarFallback className={cn(
+                      "text-xs font-bold text-white",
+                      isCurrentUserMessage
+                        ? "bg-gradient-to-br from-primary to-primary/60"
+                        : "bg-gradient-to-br from-blue-500 to-blue-700"
+                    )}>
+                      {message.senderName.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                ) : (
+                  <div className="h-8 w-8 flex-shrink-0" />
+                )}
+
+                {/* Message Bubble — Premium Glass */}
                 <div
-                  key={message.id}
                   className={cn(
-                    'flex gap-3 items-end mb-2',
-                    isCurrentUserMessage && 'flex-row-reverse gap-3'
+                    'max-w-xs lg:max-w-md px-4 py-2.5 break-words',
+                    isCurrentUserMessage
+                      ? 'chat-bubble-sent'
+                      : 'chat-bubble-received'
                   )}
                 >
-                  {/* Avatar - show only for first message from sender */}
-                  {showAvatar ? (
-                    <Avatar className="h-8 w-8 flex-shrink-0">
-                      <AvatarFallback className="text-xs">
-                        {message.senderName.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                  ) : (
-                    <div className="h-8 w-8 flex-shrink-0" />
-                  )}
-
-                  {/* Message Bubble */}
-                  <div
+                  <p className="text-sm leading-relaxed">{message.message}</p>
+                  <p
                     className={cn(
-                      'max-w-xs lg:max-w-md px-4 py-2 rounded-lg break-words',
-                      isCurrentUserMessage
-                        ? 'bg-blue-500 text-white rounded-br-none'
-                        : 'bg-gray-100 dark:bg-gray-800 text-foreground rounded-bl-none'
+                      'text-[10px] mt-1.5',
+                      isCurrentUserMessage ? 'text-white/60' : 'text-muted-foreground'
                     )}
                   >
-                    <p className="text-sm">{message.message}</p>
-                    <p
-                      className={cn(
-                        'text-xs mt-1 opacity-70',
-                        isCurrentUserMessage && 'text-blue-100'
-                      )}
-                    >
-                      {formatMessageTime(message.timestamp)}
-                    </p>
-                  </div>
-
-                  {/* Read Status */}
-                  {isCurrentUserMessage && message.read && (
-                    <span className="text-xs text-muted-foreground">✓✓</span>
-                  )}
+                    {formatMessageTime(message.timestamp)}
+                  </p>
                 </div>
-              );
-            })
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-      </ScrollArea>
 
-      {/* Message Input Area */}
-      <div className="p-4 border-t bg-background">
-        <div className="flex gap-2">
-          <Input
-            placeholder="Type a message..."
-            value={messageInput}
-            onChange={(e) => onMessageInputChange(e.target.value)}
-            onKeyDown={handleKeyDown}
-            disabled={sending}
-            className="flex-1"
-          />
-          <Button
+                {/* Read Status */}
+                {isCurrentUserMessage && message.read && (
+                  <span className="text-xs text-primary">✓✓</span>
+                )}
+              </div>
+            );
+          })
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Message Input Area — Glassmorphism */}
+      <div className="px-6 py-4 chat-glass-header" style={{ borderBottom: "none", borderTop: "1px solid rgba(34, 197, 94, 0.1)" }}>
+        <div className="flex items-center gap-3">
+          <div className="flex-1 chat-glass-input rounded-xl">
+            <input
+              type="text"
+              placeholder="Type a message..."
+              value={messageInput}
+              onChange={(e) => onMessageInputChange(e.target.value)}
+              onKeyDown={handleKeyDown}
+              disabled={sending}
+              className="w-full px-4 py-2.5 bg-transparent border-none text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-0"
+            />
+          </div>
+          <button
             onClick={onSendMessage}
             disabled={!messageInput.trim() || sending}
-            className="px-3"
+            className="flex-shrink-0 w-10 h-10 rounded-xl chat-send-btn flex items-center justify-center text-white"
           >
             <Send className="h-4 w-4" />
-          </Button>
+          </button>
         </div>
       </div>
     </div>

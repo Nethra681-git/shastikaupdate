@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
+import { HashRouter, Route, Routes, Navigate } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
@@ -29,8 +30,6 @@ import WaitingForApproval from "./pages/WaitingForApproval";
 import NotFound from "./pages/NotFound";
 import AuthRedirectHandler from "./pages/AuthRedirectHandler";
 
-console.log("CLICK WORKING");
-
 const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -38,7 +37,6 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { currentUser } = useStore();
   const { isLoading, isAccessDenied, denialReason } = useProtectedRoute();
 
-  // Show loading state
   if (isLoading) {
     return (
       <AppLayout>
@@ -49,7 +47,6 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  // Show access denied message for rejected/disabled users
   if (isAccessDenied) {
     return (
       <AppLayout>
@@ -63,14 +60,27 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  // If not authenticated, redirect to login
   if (!currentUser) return <Navigate to="/" replace />;
-
   return <AppLayout>{children}</AppLayout>;
 };
 
 const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   const { currentUser } = useStore();
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setReady(true), 800);
+    return () => clearTimeout(t);
+  }, []);
+
+  if (!ready) return (
+    <AppLayout>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      </div>
+    </AppLayout>
+  );
+
   if (!currentUser || currentUser.role !== 'admin') return <Navigate to="/dashboard" replace />;
   return <AppLayout>{children}</AppLayout>;
 };
@@ -86,7 +96,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
+      <HashRouter>
         <Routes>
           <Route path="/" element={<Login />} />
           <Route path="/__/auth/handler" element={<AuthRedirectHandler />} />
@@ -110,7 +120,7 @@ const App = () => (
           <Route path="/admin/update-products" element={<AdminRoute><AdminUpdateProducts /></AdminRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
-      </BrowserRouter>
+      </HashRouter>
     </TooltipProvider>
   </QueryClientProvider>
 );

@@ -1,19 +1,19 @@
 import { db } from './firebase';
 import { collection, addDoc, Timestamp } from 'firebase/firestore';
 
-// API endpoint - MUST be configured via environment variable
-// For development: set VITE_PAYMENT_API_URL in .env.local
-// For real Android device: VITE_PAYMENT_API_URL=http://192.168.1.25:5000
-// For Android emulator: VITE_PAYMENT_API_URL=http://10.0.2.2:5000
-const PAYMENT_API = import.meta.env.VITE_PAYMENT_API_URL;
+// API endpoint configuration
+// Development: Uses local proxy via vite (http://localhost:8080/api/razorpay)
+// Production: VITE_PAYMENT_API_URL=https://app-finals.onrender.com
+const isDevelopment = import.meta.env.MODE === 'development';
+const PAYMENT_API = isDevelopment 
+  ? 'http://localhost:8080/api/razorpay'  // Uses Vite proxy
+  : (import.meta.env.VITE_PAYMENT_API_URL || 'https://app-finals.onrender.com');
 
 if (!PAYMENT_API) {
   console.error(
-    '❌ CRITICAL: VITE_PAYMENT_API_URL is not set.\n' +
-    'Please add to .env.local or environment:\n' +
-    'VITE_PAYMENT_API_URL=http://192.168.1.25:5000 (real Android device)\n' +
-    'OR\n' +
-    'VITE_PAYMENT_API_URL=http://10.0.2.2:5000 (Android emulator)'
+    '❌ CRITICAL: Payment API is not configured.\n' +
+    'Development: Uses http://localhost:8080/api/razorpay (Vite proxy)\n' +
+    'Production: Set VITE_PAYMENT_API_URL in environment'
   );
 }
 
@@ -314,7 +314,7 @@ export async function openRazorpayCheckout(
       order_id: orderId,
       amount: amount * 100, // Convert to paise
       currency: 'INR',
-      name: 'Shastika Global Impex',
+      name: 'SHASTIKA GLOBAL IMPEX PVT. LTD',
       description: `Payment for Order ${orderId}`,
       image: '/logo.png', // Optional: Your company logo
       prefill: {

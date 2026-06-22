@@ -2,10 +2,11 @@ import io, { Socket } from 'socket.io-client';
 
 let socket: Socket | null = null;
 // Socket.io server URL - configured via environment variable
-// For development: set VITE_SOCKET_URL in .env.local
+// Production: VITE_SOCKET_URL=https://app-finals.onrender.com
+// Development: set VITE_SOCKET_URL in .env.local
 // For real Android device: VITE_SOCKET_URL=http://192.168.1.25:5000
 // For Android emulator: VITE_SOCKET_URL=http://10.0.2.2:5000
-const SOCKET_SERVER_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
+const SOCKET_SERVER_URL = import.meta.env.VITE_SOCKET_URL || 'https://app-finals.onrender.com';
 
 console.log('🔧 Socket Service initialized with URL:', SOCKET_SERVER_URL);
 

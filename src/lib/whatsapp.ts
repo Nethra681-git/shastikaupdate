@@ -17,7 +17,7 @@ export const openWhatsAppDirect = (index: number, productName?: string) => {
   const admin = ADMIN_CONTACTS[index] || ADMIN_CONTACTS[0];
   const message = productName
     ? `Hi 👋 I am interested in your product *${productName}*. Can you share more details?`
-    : `Hi 👋 I need assistance regarding Shastika Global Impex products.`;
+    : `Hi 👋 I need assistance regarding SHASTIKA GLOBAL IMPEX PVT. LTD products.`;
   window.open(`https://wa.me/${admin.phone}?text=${encodeURIComponent(message)}`, '_blank');
 };
 

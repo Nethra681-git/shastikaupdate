@@ -11,7 +11,7 @@ export function generateInvoice(order: Order) {
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
-  doc.text('SHASTIKA GLOBAL IMPEX PRIVATE LIMITED', w / 2, 18, { align: 'center' });
+  doc.text('SHASTIKA GLOBAL IMPEX PVT. LTD', w / 2, 18, { align: 'center' });
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
   doc.text('Agriculture Export Marketplace', w / 2, 26, { align: 'center' });
@@ -75,7 +75,7 @@ export function generateInvoice(order: Order) {
   doc.rect(0, footerY - 5, w, 25, 'F');
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(8);
-  doc.text('SHASTIKA GLOBAL IMPEX PRIVATE LIMITED — Agriculture Export Solutions', w / 2, footerY + 5, { align: 'center' });
+  doc.text('SHASTIKA GLOBAL IMPEX PVT. LTD — Agriculture Export Solutions', w / 2, footerY + 5, { align: 'center' });
   doc.text('Thank you for your business!', w / 2, footerY + 11, { align: 'center' });
 
   doc.save(`Invoice_${order.id}.pdf`);

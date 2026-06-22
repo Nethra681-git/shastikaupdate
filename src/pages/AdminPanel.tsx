@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, onSnapshot, updateDoc, doc, getDocs, query, where } from 'firebase/firestore';
-import { db, auth } from '@/lib/firebase';
+import { collection, onSnapshot, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { useStore, type ShipmentStatus, type PaymentStatus } from '@/lib/store';
 import { generatePaymentReceipt } from '@/lib/receipt';
 import {
   Users, Package, ClipboardList, Truck, DollarSign, Bell, TrendingUp,
-  Check, X, Ban, Download, Shield, Edit2, Save, AlertCircle, MessageCircle,
+  Check, X, Ban, Trash2, Download, Shield, Edit2, Save, AlertCircle, MessageCircle,
   ChevronRight
 } from 'lucide-react';
 
@@ -37,8 +37,6 @@ const AdminPanel = () => {
   const [firestoreUsers, setFirestoreUsers] = useState<any[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
-  const [isAccessDenied, setIsAccessDenied] = useState(false);
 
   // ✅ NEW: Track which order's status is being updated (loading state)
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
@@ -48,35 +46,7 @@ const AdminPanel = () => {
 
   const ADMIN_PIN = '1234';
 
-  // Check admin access
-  useEffect(() => {
-    const checkAdminAccess = async () => {
-      try {
-        const authUser = auth.currentUser;
-        if (!authUser) {
-          setIsAccessDenied(true);
-          setTimeout(() => navigate('/login'), 2000);
-          return;
-        }
-        const usersSnapshot = await getDocs(
-          query(collection(db, 'users'), where('email', '==', authUser.email))
-        );
-        if (usersSnapshot.empty) { setIsAccessDenied(true); return; }
-        const userData = usersSnapshot.docs[0].data();
-        setCurrentUserRole(userData.role);
-        if (userData.role !== 'admin') {
-          setIsAccessDenied(true);
-          setTimeout(() => navigate('/dashboard'), 2000);
-        }
-      } catch (error) {
-        console.error('Error checking admin access:', error);
-        setIsAccessDenied(true);
-      }
-    };
-    checkAdminAccess();
-  }, [navigate]);
 
-  // Real-time users listener
   useEffect(() => {
     setLoadingUsers(true);
     const unsubscribe = onSnapshot(
@@ -134,6 +104,16 @@ const AdminPanel = () => {
     }
   };
 
+  const handleDelete = async (userId: string, userName?: string) => {
+    const confirmed = window.confirm(`Permanently delete ${userName || 'this user'}? This cannot be undone.`);
+    if (!confirmed) return;
+    try {
+      await deleteDoc(doc(db, 'users', userId));
+    } catch (err) {
+      setErrorMessage(`Error deleting user: ${err instanceof Error ? err.message : 'Unknown'}`);
+    }
+  };
+
   // ✅ Update shipment status - uses firestoreDocId (real Firestore doc ID)
   const handleShipmentStatusUpdate = async (firestoreDocId: string, displayId: string, newStatus: ShipmentStatus) => {
     setUpdatingOrderId(firestoreDocId);
@@ -168,31 +148,10 @@ const AdminPanel = () => {
 
   const shipmentStatuses: ShipmentStatus[] = ['placed', 'processing', 'shipped', 'transit', 'out_for_delivery', 'delivered'];
 
-  if (isAccessDenied) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="glass-card rounded-xl p-8 text-center max-w-sm">
-          <Shield className="w-16 h-16 text-destructive mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-foreground mb-2">Access Denied</h1>
-          <p className="text-muted-foreground mb-6">Only admin users can access this panel. Redirecting...</p>
-          <div className="w-full bg-muted rounded-full h-1 overflow-hidden">
-            <div className="bg-primary h-full animate-pulse"></div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-foreground">Admin Panel</h1>
-        <button
-          onClick={() => navigate('/admin/update-products')}
-          className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition font-medium"
-        >
-          Update Products
-        </button>
       </div>
 
       {/* Tabs */}
@@ -261,6 +220,7 @@ const AdminPanel = () => {
                 <button onClick={() => handleApprove(u.id)} className="p-2 rounded-lg bg-success/10 text-success hover:bg-success/20 transition" title="Approve"><Check className="w-4 h-4" /></button>
                 <button onClick={() => handleReject(u.id)} className="p-2 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 transition" title="Reject"><X className="w-4 h-4" /></button>
                 <button onClick={() => handleDisable(u.id)} className="p-2 rounded-lg bg-muted text-muted-foreground hover:bg-muted/80 transition" title="Disable"><Ban className="w-4 h-4" /></button>
+                <button onClick={() => handleDelete(u.id, u.name)} className="p-2 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 transition" title="Delete"><Trash2 className="w-4 h-4" /></button>
                 <button onClick={() => navigate(`/chat?userId=${u.id}`)} className="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition" title="Message"><MessageCircle className="w-4 h-4" /></button>
               </div>
             </div>

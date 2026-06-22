@@ -14,6 +14,19 @@ export default defineConfig(({ mode }) => ({
     fs: {
       allow: ["."],
     },
+    // ✅ CORS Proxy for Razorpay API calls
+    proxy: {
+      '/api/razorpay': {
+        target: 'https://app-finals.onrender.com',
+        changeOrigin: true,
+        rewrite: (path) => path,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        }
+      }
+    }
   },
   plugins: [react()],
   resolve: {

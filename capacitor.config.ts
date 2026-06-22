@@ -1,11 +1,11 @@
-import type { CapacitorConfig } from '@capacitor/cli';
+import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.shastika.shastikaapp',
-  appName: 'shastikaapp',
+  appName: 'Shastika',
   webDir: 'dist',
   server: {
-    androidScheme: 'http'
+    androidScheme: 'https'
   }
 };
 

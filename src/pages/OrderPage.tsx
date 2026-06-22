@@ -164,12 +164,15 @@ const OrderPage = () => {
       const endpoint = `${apiUrl}/api/razorpay/create-order`;
       console.log('[RAZORPAY] Full endpoint URL:', endpoint);
 
-      // Step 4: Fetch order from backend
       console.log('\n[RAZORPAY] Step 4: Fetching order from backend');
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestPayload),
+      }).catch(err => {
+        // Handle network/CORS errors
+        console.error('[RAZORPAY] Network/CORS Error:', err.message);
+        throw new Error(`Network Error: ${err.message}. Make sure the backend server is running and CORS is configured.`);
       });
 
       console.log('[RAZORPAY] Response status:', res.status);
@@ -355,7 +358,16 @@ const OrderPage = () => {
       console.error('RAZORPAY PARSED ERROR:', errorInfo);
       console.log('========== RAZORPAY ERROR END ==========\n');
       
-      alert(`Payment Error: ${(error as any)?.message || String(error)}`);
+      // Enhanced error message
+      let errorMessage = (error as any)?.message || String(error);
+      
+      if (errorMessage.includes('Failed to fetch') || errorMessage.includes('CORS')) {
+        errorMessage = 'Payment API is not accessible. The backend server may be down or CORS is not configured. Please try again later.';
+      } else if (errorMessage.includes('Network Error')) {
+        errorMessage = 'Network connection failed. Please check your internet connection and try again.';
+      }
+      
+      alert(`Payment Error: ${errorMessage}`);
     }
   };
 
