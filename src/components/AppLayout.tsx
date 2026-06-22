@@ -4,7 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { useStore } from '@/lib/store';
 import LanguageSelector from './LanguageSelector';
 import LanguageSwitcher from './LanguageSwitcher';
-import { LayoutDashboard, ShoppingBag, ClipboardList, CreditCard, Truck, MessageCircle, Bot, ShieldCheck, User, LogOut, Bell, ChevronLeft, Menu, X, Leaf } from 'lucide-react';
+import { LayoutDashboard, ShoppingBag, ClipboardList, CreditCard, Truck, MessageCircle, Bot, ShieldCheck, User, LogOut, Bell, ChevronLeft, Menu, X, Leaf, PlusCircle } from 'lucide-react';
+import logo from '@/assets/logo.webp';
 
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const { t } = useTranslation();
@@ -31,52 +32,61 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
 
   const items = currentUser?.role === 'admin'
     ? [...navItems, { path: '/admin', label: t('admin'), icon: ShieldCheck }]
+    : currentUser?.role === 'farmer'
+    ? [
+        ...navItems,
+        { path: '/farmer/add-product', label: t('add_product', 'Add Product'), icon: PlusCircle },
+        { path: '/farmer/requests', label: t('purchase_requests', 'Purchase Requests'), icon: ClipboardList },
+        { path: '/farmer/payments', label: t('payment_status', 'Payment Status'), icon: CreditCard },
+      ]
+    : currentUser?.role === 'buyer'
+    ? [
+        ...navItems,
+        { path: '/buyer/rfq', label: t('rfq', 'RFQ'), icon: ClipboardList },
+      ]
     : navItems;
 
   return (
-    <div className="flex w-full min-h-screen bg-background">
-      {/* Global Fixed Language Switcher */}
-      <LanguageSwitcher />
-      
+    <div className="flex w-full h-screen bg-background overflow-hidden">
       {/* Sidebar - Premium dark green gradient */}
-      <aside className={`fixed md:static left-0 top-0 h-screen md:h-full w-64 sidebar-gradient text-sidebar-foreground flex flex-col shrink-0 z-40 transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} shadow-2xl md:shadow-xl`}>
-        <div className="p-5 flex items-center justify-between border-b border-sidebar-border/30 backdrop-blur-sm">
+      <aside className={`fixed left-0 top-0 h-[100vh] w-64 sidebar-gradient text-sidebar-foreground flex flex-col shrink-0 z-40 transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} shadow-2xl md:shadow-xl`}>
+        <div className="p-4 flex items-center justify-between border-b border-sidebar-border/30 backdrop-blur-sm shrink-0">
           <div className="flex items-center gap-2">
-            <img src="/src/assets/logo.png" alt="Shastika Logo" className="h-8 w-8" />
+            <img src={logo} alt="Shastika Logo" className="h-6 w-6" />
             <div>
-              <p className="text-white font-bold text-sm leading-tight">{t('shastika')} GLOBAL</p>
-              <p className="text-green-300 text-xs">IMPEX PVT LTD</p>
+              <p className="text-white font-bold text-[13px] leading-tight">{t('shastika')} GLOBAL</p>
+              <p className="text-green-300 text-[10px]">IMPEX PVT LTD</p>
             </div>
           </div>
           <button onClick={() => setSidebarOpen(false)} className="md:hidden p-1 hover:bg-white/10 rounded-lg transition">
             <X className="w-5 h-5 text-white/80" />
           </button>
         </div>
-        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+        <nav className="flex-1 p-3 space-y-[2px] overflow-y-auto">
           {items.map(item => {
             const active = location.pathname === item.path;
             return (
               <button key={item.path} onClick={() => { navigate(item.path); setSidebarOpen(false); }}
-                className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${active 
-                  ? 'bg-accent text-accent-foreground shadow-lg scale-105' 
+                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] font-medium transition-all duration-200 ${active 
+                  ? 'bg-accent text-accent-foreground shadow-md scale-[1.02]' 
                   : 'text-white/75 hover:text-white hover:bg-white/10'}`}>
-                <item.icon className="w-5 h-5" />
-                <span>{item.label}</span>
-                {item.path === '/chat' && unread > 0 && <span className="ml-auto bg-red-500 text-white text-xs rounded-full px-2 py-0.5 font-semibold">{unread}</span>}
+                <item.icon className="w-[18px] h-[18px] shrink-0" />
+                <span className="truncate">{item.label}</span>
+                {item.path === '/chat' && unread > 0 && <span className="ml-auto bg-red-500 text-white text-[10px] rounded-full px-2 py-0.5 font-bold">{unread}</span>}
               </button>
             );
           })}
         </nav>
-        <div className="p-4 border-t border-sidebar-border/30 backdrop-blur-sm bg-white/5">
-          <div className="flex items-center gap-3 px-3 py-3 rounded-xl mb-3 bg-white/10">
-            <div className="w-9 h-9 rounded-lg bg-accent flex items-center justify-center text-accent-foreground text-sm font-bold flex-shrink-0">{currentUser?.name?.[0] || 'U'}</div>
+        <div className="p-4 border-t border-sidebar-border/30 backdrop-blur-xl bg-black/20 sticky bottom-0 shrink-0 mt-auto">
+          <div className="flex items-center gap-2 px-2 py-2 rounded-lg mb-2 bg-white/5">
+            <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center text-accent-foreground text-xs font-bold flex-shrink-0">{currentUser?.name?.[0] || 'U'}</div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-white truncate">{currentUser?.name}</p>
-              <p className="text-xs text-white/60 capitalize">{currentUser?.role}</p>
+              <p className="text-[13px] font-semibold text-white truncate">{currentUser?.name}</p>
+              <p className="text-[11px] text-white/60 capitalize">{currentUser?.role}</p>
             </div>
           </div>
-          <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/75 hover:bg-white/10 hover:text-white transition-all font-medium">
-            <LogOut className="w-5 h-5" /> <span>{t('logout')}</span>
+          <button onClick={handleLogout} className="w-full flex items-center gap-2 px-2 py-2 rounded-lg text-[13px] text-white/75 hover:bg-white/10 hover:text-white transition-all font-medium">
+            <LogOut className="w-[18px] h-[18px]" /> <span>{t('logout')}</span>
           </button>
         </div>
       </aside>
@@ -84,8 +94,8 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
       {/* Mobile overlay */}
       {sidebarOpen && <div onClick={() => setSidebarOpen(false)} className="fixed inset-0 bg-black/40 md:hidden z-30 backdrop-blur-sm" />}
       
-      <main className="flex-1 flex flex-col w-full">
-        <header className="h-16 border-b border-border/50 bg-card/95 backdrop-blur-sm flex items-center justify-between px-6 shrink-0 shadow-sm">
+      <main className="flex flex-col w-full md:w-[calc(100%-16rem)] md:ml-64 h-[100vh] overflow-y-auto relative transition-all duration-300">
+        <header className="sticky top-0 z-30 h-16 border-b border-border/50 bg-card/95 backdrop-blur-sm flex items-center justify-between px-6 shrink-0 shadow-sm">
           <div className="flex items-center gap-4 flex-1 min-w-0">
             <button onClick={() => setSidebarOpen(!sidebarOpen)} className="md:hidden p-2 hover:bg-muted rounded-lg transition">
               <Menu className="w-5 h-5 text-muted-foreground" />
@@ -95,7 +105,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
             </button>
           </div>
           <div className="flex items-center gap-3 sm:gap-6">
-            <LanguageSelector compact={true} />
+            <LanguageSwitcher className="relative z-50" />
             <button onClick={() => navigate('/notifications')} className="relative p-2 hover:bg-muted rounded-lg transition">
               <Bell className="w-5 h-5 text-muted-foreground hover:text-primary transition" />
               {unread > 0 && <span className="absolute top-1 right-1 w-5 h-5 bg-accent text-accent-foreground text-[10px] font-bold rounded-full flex items-center justify-center">{unread}</span>}
@@ -103,7 +113,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
             <span className="text-sm text-muted-foreground capitalize hidden sm:inline font-medium">{currentUser?.role} {t('dashboard')}</span>
           </div>
         </header>
-        <div className="flex-1 overflow-y-auto overflow-x-hidden p-6 md:p-8 w-full">{children}</div>
+        <div className="flex-1 p-6 md:p-8 w-full">{children}</div>
       </main>
     </div>
   );

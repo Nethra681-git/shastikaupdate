@@ -25,10 +25,14 @@ import AdminProducts from "./pages/AdminProducts";
 import AdminUpdateProducts from "./pages/AdminUpdateProducts";
 import Notifications from "./pages/Notifications";
 import FarmerDashboard from "./pages/FarmerDashboard";
+import FarmerAddProduct from "./pages/FarmerAddProduct";
+import FarmerRequestsNew from "./pages/FarmerRequestsNew";
+import FarmerPayments from "./pages/FarmerPayments";
 import PaymentConfirmation from "./pages/PaymentConfirmation";
 import WaitingForApproval from "./pages/WaitingForApproval";
 import NotFound from "./pages/NotFound";
 import AuthRedirectHandler from "./pages/AuthRedirectHandler";
+import BuyerRFQ from "./pages/BuyerRFQ";
 
 const queryClient = new QueryClient();
 
@@ -114,7 +118,11 @@ const App = () => (
           <Route path="/verification" element={<ProtectedRoute><Verification /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
+          <Route path="/buyer/rfq" element={<ProtectedRoute><BuyerRFQ /></ProtectedRoute>} />
           <Route path="/farmer-dashboard" element={<FarmerRoute><FarmerDashboard /></FarmerRoute>} />
+          <Route path="/farmer/add-product" element={<FarmerRoute><FarmerAddProduct /></FarmerRoute>} />
+          <Route path="/farmer/requests" element={<FarmerRoute><FarmerRequestsNew /></FarmerRoute>} />
+          <Route path="/farmer/payments" element={<FarmerRoute><FarmerPayments /></FarmerRoute>} />
           <Route path="/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
           <Route path="/admin/products" element={<AdminRoute><AdminProducts /></AdminRoute>} />
           <Route path="/admin/update-products" element={<AdminRoute><AdminUpdateProducts /></AdminRoute>} />

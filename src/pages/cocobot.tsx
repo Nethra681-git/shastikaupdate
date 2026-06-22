@@ -185,8 +185,9 @@ const PRODUCT_KB: Record<string, ProductSpec> = {
 };
 
 // ─── RESPONSE ENGINE ──────────────────────────────────────────────
-function getBotResponse(input: string, t: any, liveProducts: ReturnType<typeof useStore>['products']): { text: string; html: boolean } {
+function getBotResponse(input: string, t: any, liveProducts: ReturnType<typeof useStore>['products'], currentUser: ReturnType<typeof useStore>['currentUser']): { text: string; html: boolean } {
   const q = input.toLowerCase().trim();
+  const isFarmer = currentUser?.role === 'farmer';
 
   // Greetings
   if (/^(hi|hello|hey|வணக்கம்|helo|hai|hii|namaste)/.test(q)) {
@@ -194,45 +195,75 @@ function getBotResponse(input: string, t: any, liveProducts: ReturnType<typeof u
   }
 
   // Products list
-  if (/\b(products?|list|catalog|range|what do you|sell|export all|பொருட்|வகை|catalog)\b/.test(q)) {
+  if (/\b(products?|list|catalog|range|what do you|sell|export all|பொருட்|வகை|catalog)\b/.test(q) && !/\b(price)\b/.test(q)) {
     return { html: true, text: t('chatbot_products_list') };
   }
 
-  // Live product from Firebase store
-  const liveMatch = liveProducts.find(p => q.includes(p.name.toLowerCase()) || p.name.toLowerCase().includes(q));
-  if (liveMatch) {
+  // Export / International Price check
+  if (/\b(export|international|interantinol|usd|foreign|quotation|quote|abroad)\b/.test(q)) {
     return {
       html: true,
-      text: `<strong>${liveMatch.name}</strong> 🌿<br/><br/>${liveMatch.description}<br/><br/>
-<div style="background:rgba(22,163,74,0.1);border:1px solid rgba(22,163,74,0.3);border-radius:10px;padding:10px;margin-top:8px;font-size:12px;">
-  <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.1)"><span style="color:#86efac">Domestic Price</span><span>₹${liveMatch.domesticPrice}/${liveMatch.unit}</span></div>
-  <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.1)"><span style="color:#86efac">Export Price</span><span>₹${liveMatch.exportPrice}/${liveMatch.unit}</span></div>
-  <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.1)"><span style="color:#86efac">Available Stock</span><span>${liveMatch.quantity.toLocaleString()} ${liveMatch.unit}</span></div>
-  <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.1)"><span style="color:#86efac">Packaging</span><span>${liveMatch.packaging}</span></div>
-  <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:#86efac">Shipping</span><span>${liveMatch.shippingType}</span></div>
-</div><br/>
-<a href="${COMPANY.whatsapp}" target="_blank" style="color:#4ade80">📱 WhatsApp us for a quote →</a>`,
+      text: `For export pricing, please contact our Admin:<br/><br/>📞 +91 7397612015<br/>💬 WhatsApp: +91 9566266241<br/>📧 shastikaglobalimpexprivatelimited@gmail.com`
     };
   }
 
-  // Static product KB
   const kbKeys = Object.keys(PRODUCT_KB);
-  const matchedKey = kbKeys.find(k =>
-    q.includes(k) || k.split(' ').some(w => w.length > 4 && q.includes(w))
+  const matchedKey = kbKeys.find(k => q.includes(k) || k.split(' ').some(w => w.length > 4 && q.includes(w)));
+  
+  const liveMatch = liveProducts.find(p => 
+    q.includes(p.name.toLowerCase()) || 
+    (q.length > 3 && p.name.toLowerCase().includes(q)) || 
+    (matchedKey && p.name.toLowerCase().includes(matchedKey.split(' ')[0]))
   );
-  if (matchedKey) {
-    const p = PRODUCT_KB[matchedKey];
-    const specRows = p.specs
-      .map(([k, v]) => `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.07)"><span style="color:#86efac;font-size:11px">${k}</span><span style="font-size:11px">${v}</span></div>`)
-      .join('');
+
+  const hasPriceKeyword = /\b(price|cost|rate)\b/.test(q);
+
+  // If asking for ALL prices / price list
+  if (/\b(all prices|price list|list of prices)\b/.test(q)) {
+    const priceList = liveProducts.map(p => `• <strong>${p.name}</strong>: ₹${p.domesticPrice}/${p.unit}`).join('<br/>');
     return {
       html: true,
-      text: `${p.emoji} <strong>${p.name}</strong><br/><br/>${p.desc}<br/><br/>
-<div style="background:rgba(22,163,74,0.1);border:1px solid rgba(22,163,74,0.3);border-radius:10px;padding:10px;margin-top:4px">
-  <div style="color:#4ade80;font-size:11px;font-weight:600;margin-bottom:6px">📋 SPECIFICATIONS</div>
-  ${specRows}
-</div><br/>
-Interested? <a href="${COMPANY.whatsapp}" target="_blank" style="color:#4ade80">Chat on WhatsApp →</a>`,
+      text: `<strong>Today's Market Price</strong> 🌿<br/><br/>${priceList}<br/><br/><span style="color:#86efac;font-size:12px;">For export rates, contact admin:<br/>📞 +91 7397612015<br/>💬 +91 9566266241</span>`
+    };
+  }
+
+  // If a product is mentioned (with or without 'price' keyword)
+  if (liveMatch || matchedKey) {
+    const searchTerms = q.replace(/\b(price|cost|rate|domestic|market|local|today|todays|of|for|tell|me|about|what|is|the)\b/g, '').trim().split(/\s+/).filter(w => w.length > 2);
+    
+    // Find all products matching any search term
+    const prods = liveProducts.filter(p => searchTerms.some(term => p.name.toLowerCase().includes(term)));
+    const finalProds = prods.length > 0 ? prods : (liveMatch ? [liveMatch] : []);
+
+    if (finalProds.length > 0) {
+      const titleName = searchTerms.length > 0 
+        ? searchTerms[0].charAt(0).toUpperCase() + searchTerms[0].slice(1) 
+        : finalProds[0].name;
+      
+      const priceLines = finalProds.map(p => `• <strong>${p.name}</strong>: ₹${p.domesticPrice}/${p.unit}`).join('<br/>');
+      
+      return {
+        html: true,
+        text: `<strong>${titleName} - Domestic Market Price 🌿</strong><br/><br/>${priceLines}<br/><br/><span style="font-size:12px;">Prices as per current market rates.</span><br/><br/><span style="color:#86efac;font-size:12px;">For export pricing, contact admin:<br/>📞 +91 7397612015</span>`
+      };
+    } else {
+      return { html: true, text: `Product not available in our marketplace currently.` };
+    }
+  }
+
+  // If asking "domestic price" WITHOUT specific product
+  if (/\b(domestic price|market price|local price|today's price|todays price|today price)\b/.test(q)) {
+    return {
+      html: true,
+      text: `Which product price would you like to know?<br/>Please specify the product name 🌿`
+    };
+  }
+
+  // If asking JUST "price" without product
+  if (q === "price" || q === "cost" || q === "rate") {
+    return {
+      html: true,
+      text: `Which product price would you like to know?<br/>Please specify the product name 🌿`
     };
   }
 
@@ -254,11 +285,6 @@ Interested? <a href="${COMPANY.whatsapp}" target="_blank" style="color:#4ade80">
   // Certifications / Quality
   if (/\b(certif|quality|standard|apeda|fssai|phyto|organic|audit|சான்று|தரம்|license)\b/.test(q)) {
     return { html: true, text: t('chatbot_certifications') };
-  }
-
-  // Quote / Price
-  if (/\b(price|pric|quote|cost|rate|₹|\$|how much|minimum|moq|order|buy|purchase|விலை|மேற்கோள்)\b/.test(q)) {
-    return { html: true, text: t('chatbot_quote') };
   }
 
   // Contact
@@ -288,7 +314,7 @@ Interested? <a href="${COMPANY.whatsapp}" target="_blank" style="color:#4ade80">
 // ─── MAIN COMPONENT ───────────────────────────────────────────────
 const ShastikaChatbot = () => {
   const { t, i18n } = useTranslation();
-  const { products } = useStore();
+  const { products, currentUser } = useStore();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -347,7 +373,7 @@ const ShastikaChatbot = () => {
     const delay = 600 + Math.min(text.length * 6, 1200);
     setTimeout(() => {
       setIsTyping(false);
-      const { text: resp, html } = getBotResponse(text, t, products);
+      const { text: resp, html } = getBotResponse(text, t, products, currentUser);
       addBotMsg(resp, html);
     }, delay);
   };

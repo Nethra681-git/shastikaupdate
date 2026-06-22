@@ -3,19 +3,30 @@ import { collection, getDocs } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
 import { useStore, type ShipmentStatus } from '@/lib/store';
 import { useTranslation } from 'react-i18next';
-import { Package, Cog, Truck, MapPin, Home, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { Package, Cog, Truck, MapPin, Home, CheckCircle, Clock, AlertCircle, Check, Loader2 } from 'lucide-react';
 
-const ShipmentSteps = ({ t }: { t: any }) => [
-  { status: 'placed' as ShipmentStatus, label: t('shipment_status_placed'), icon: Package },
-  { status: 'processing' as ShipmentStatus, label: t('shipment_status_processing'), icon: Cog },
-  { status: 'shipped' as ShipmentStatus, label: t('shipment_status_shipped'), icon: Truck },
-  { status: 'transit' as ShipmentStatus, label: t('shipment_status_transit'), icon: MapPin },
-  { status: 'out_for_delivery' as ShipmentStatus, label: t('shipment_status_out_for_delivery'), icon: Home },
-  { status: 'delivered' as ShipmentStatus, label: t('shipment_status_delivered'), icon: CheckCircle },
+const TRACKER_STEPS = [
+  { id: 'placed', label: 'Order Confirmed' },
+  { id: 'packing', label: 'Packing' },
+  { id: 'container_stuffing', label: 'Container Stuffing' },
+  { id: 'customs_clearance', label: 'Customs Clearance' },
+  { id: 'vessel_departure', label: 'Vessel Departure' },
+  { id: 'arrival', label: 'Arrival' },
+  { id: 'delivered', label: 'Delivery' }
 ];
 
-const statusIndex = (s: ShipmentStatus, steps: any[]) =>
-  steps.findIndex(st => st.status === s);
+const getStepIndex = (status: string) => {
+  switch (status) {
+    case 'placed': return 0;
+    case 'processing': case 'packing': return 1;
+    case 'container_stuffing': return 2;
+    case 'customs_clearance': return 3;
+    case 'shipped': case 'vessel_departure': return 4;
+    case 'transit': case 'arrival': return 5;
+    case 'out_for_delivery': case 'delivered': return 6;
+    default: return 0;
+  }
+};
 
 // ✅ Helper: Firestore Timestamp / string / null → readable date string
 const formatDate = (value: any): string => {
@@ -30,7 +41,6 @@ const formatDate = (value: any): string => {
 
 const Shipment = () => {
   const { t } = useTranslation();
-  const steps = ShipmentSteps({ t });
   const { currentUser } = useStore();
   const isAdmin = currentUser?.role === 'admin';
 
@@ -139,7 +149,8 @@ const Shipment = () => {
       ) : (
         <div className="space-y-6">
           {myOrders.map(order => {
-            const currentIdx = statusIndex(order.shipmentStatus, steps);
+            const currentIdx = getStepIndex(order.shipmentStatus);
+            const progressPercent = Math.round((currentIdx / (TRACKER_STEPS.length - 1)) * 100);
             return (
               <div
                 key={order.id}
@@ -200,47 +211,73 @@ const Shipment = () => {
                   </div>
                 </div>
 
-                {/* Progress steps */}
-                <div className="relative">
-                  <div className="flex items-center justify-between overflow-x-auto">
-                    {steps.map((step, i) => {
-                      const done = i <= currentIdx;
-                      const Icon = step.icon;
-                      const isLast = i === steps.length - 1;
-                      return (
-                        <div
-                          key={step.status}
-                          className="flex flex-col items-center relative flex-1 min-w-max px-1"
-                        >
-                          <div
-                            className={`w-14 h-14 rounded-2xl flex items-center justify-center border-2 transition-all ${
-                              done
-                                ? 'gradient-primary text-white border-primary shadow-lg'
-                                : 'bg-background text-muted-foreground border-border'
-                            }`}
-                          >
-                            <Icon className="w-6 h-6" />
-                          </div>
-                          <p
-                            className={`text-xs mt-3 text-center font-semibold whitespace-nowrap ${
-                              done ? 'text-primary' : 'text-muted-foreground'
-                            }`}
-                          >
-                            {step.label}
-                          </p>
-                          {!isLast && (
+                {/* Progress Tracking Bar */}
+                <div className="pt-4 border-t border-border/50">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-sm font-semibold text-foreground">Overall Progress</span>
+                    <span className="text-sm font-bold text-primary">{progressPercent}%</span>
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-2 mb-8 overflow-hidden">
+                    <div 
+                      className="bg-primary h-2 rounded-full transition-all duration-1000" 
+                      style={{ width: `${progressPercent}%` }}
+                    />
+                  </div>
+
+                  <div className="relative">
+                    {/* Background track line */}
+                    <div className="absolute top-5 left-4 right-4 h-1 bg-muted rounded-full" />
+                    
+                    {/* Active track line */}
+                    <div 
+                      className="absolute top-5 left-4 h-1 bg-primary transition-all duration-1000 rounded-full" 
+                      style={{ width: `calc(${progressPercent}% - 2rem)` }}
+                    />
+
+                    <div className="flex items-start justify-between relative z-10 overflow-x-auto pb-4 custom-scrollbar">
+                      {TRACKER_STEPS.map((step, i) => {
+                        const isCompleted = i < currentIdx;
+                        const isCurrent = i === currentIdx;
+                        const isFuture = i > currentIdx;
+
+                        return (
+                          <div key={step.id} className="flex flex-col items-center relative flex-1 min-w-[100px] px-1">
                             <div
-                              className={`absolute top-7 -right-1/2 h-1 transition-all ${
-                                i < currentIdx
-                                  ? 'bg-gradient-to-r from-primary to-secondary'
-                                  : 'bg-border'
+                              className={`w-10 h-10 rounded-full flex items-center justify-center border-[3px] transition-all bg-background z-10 ${
+                                isCompleted
+                                  ? 'border-green-500 text-green-500'
+                                  : isCurrent
+                                  ? 'border-orange-500 text-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.3)]'
+                                  : 'border-muted-foreground/30 text-muted-foreground/30'
                               }`}
-                              style={{ width: 'calc(100% + 0.5rem)' }}
-                            />
-                          )}
-                        </div>
-                      );
-                    })}
+                            >
+                              {isCompleted ? (
+                                <Check className="w-5 h-5 stroke-[3]" />
+                              ) : isCurrent ? (
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                              ) : (
+                                <div className="w-3 h-3 rounded-full bg-muted-foreground/30" />
+                              )}
+                            </div>
+                            
+                            <p
+                              className={`text-xs mt-3 text-center font-bold whitespace-nowrap ${
+                                isCompleted ? 'text-green-600 dark:text-green-500' : isCurrent ? 'text-orange-600 dark:text-orange-500' : 'text-muted-foreground'
+                              }`}
+                            >
+                              {step.label}
+                            </p>
+                            
+                            {/* Simple Date Logic */}
+                            {(isCompleted || isCurrent) && (
+                              <p className="text-[10px] text-muted-foreground mt-1 text-center font-medium">
+                                {i === 0 ? formatDate(order.orderDate || order.createdAt) : isCurrent ? formatDate(order.shipmentUpdatedAt) : 'Completed'}
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
 

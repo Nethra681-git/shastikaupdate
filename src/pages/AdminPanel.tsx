@@ -2,17 +2,15 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { collection, onSnapshot, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { useStore, type ShipmentStatus, type PaymentStatus } from '@/lib/store';
-import { generatePaymentReceipt } from '@/lib/receipt';
+import { useStore, type ShipmentStatus } from '@/lib/store';
 import {
   Users, Package, ClipboardList, Truck, DollarSign, Bell, TrendingUp,
   Check, X, Ban, Trash2, Download, Shield, Edit2, Save, AlertCircle, MessageCircle,
-  ChevronRight
+  ChevronRight, Lock
 } from 'lucide-react';
 
-const tabs = ['Users', 'Products', 'Orders', 'Payments', 'Shipments', 'Pricing', 'Notifications', 'Revenue'];
+const tabs = ['Users', 'Orders', 'Shipments', 'Notifications', 'Revenue'];
 
-// ✅ All 6 shipment steps in order
 const SHIPMENT_STEPS: { status: ShipmentStatus; label: string; emoji: string }[] = [
   { status: 'placed',           label: 'Order Placed',     emoji: '📦' },
   { status: 'processing',       label: 'Processing',       emoji: '⚙️' },
@@ -25,27 +23,18 @@ const SHIPMENT_STEPS: { status: ShipmentStatus; label: string; emoji: string }[]
 const AdminPanel = () => {
   const navigate = useNavigate();
   const {
-    users, products, orders, payments, notifications, messages,
-    updateUserStatus, updateShipmentStatus, updateProductPrice,
-    updatePaymentStatus, addNotification, updateTrackingInfo
+    users, orders, notifications,
+    updateShipmentStatus, updateTrackingInfo
   } = useStore();
+  
   const [activeTab, setActiveTab] = useState('Users');
-  const [editPrice, setEditPrice] = useState<{ id: string; domestic: number; export: number } | null>(null);
   const [editTracking, setEditTracking] = useState<{ id: string; trackingNumber: string; trackingLink: string } | null>(null);
-  const [txnPin, setTxnPin] = useState('');
-  const [pinVerified, setPinVerified] = useState(false);
+  
   const [firestoreUsers, setFirestoreUsers] = useState<any[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  // ✅ NEW: Track which order's status is being updated (loading state)
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
-
-  // ✅ NEW: Firestore orders for shipment tab (real-time)
   const [firestoreOrders, setFirestoreOrders] = useState<any[]>([]);
-
-  const ADMIN_PIN = '1234';
-
 
   useEffect(() => {
     setLoadingUsers(true);
@@ -63,17 +52,14 @@ const AdminPanel = () => {
     return () => unsubscribe();
   }, []);
 
-  // ✅ NEW: Real-time orders listener for Shipments tab
-  // firestoreDocId = actual Firestore document ID (used for updateDoc)
-  // id = the app-level order ID like ORD-xxx (used for display only)
   useEffect(() => {
     const unsubscribe = onSnapshot(
       collection(db, 'orders'),
       (snapshot) => {
         setFirestoreOrders(snapshot.docs.map(docSnap => ({
-          firestoreDocId: docSnap.id,   // ← real Firestore doc ID for updateDoc
+          firestoreDocId: docSnap.id,
           ...docSnap.data(),
-          id: docSnap.data().id || docSnap.id, // ← display ID (ORD-xxx or fallback)
+          id: docSnap.data().id || docSnap.id,
         })));
       },
       (error) => console.error('Orders listener error:', error)
@@ -81,40 +67,28 @@ const AdminPanel = () => {
     return () => unsubscribe();
   }, []);
 
-  // User status handlers
   const handleApprove = async (userId: string) => {
-    try {
-      await updateDoc(doc(db, 'users', userId), { status: 'approved' });
-    } catch (err) {
-      setErrorMessage(`Error approving user: ${err instanceof Error ? err.message : 'Unknown'}`);
-    }
+    try { await updateDoc(doc(db, 'users', userId), { status: 'approved' }); }
+    catch (err) { setErrorMessage(`Error approving user: ${err instanceof Error ? err.message : 'Unknown'}`); }
   };
+  
   const handleReject = async (userId: string) => {
-    try {
-      await updateDoc(doc(db, 'users', userId), { status: 'rejected' });
-    } catch (err) {
-      setErrorMessage(`Error rejecting user: ${err instanceof Error ? err.message : 'Unknown'}`);
-    }
+    try { await updateDoc(doc(db, 'users', userId), { status: 'rejected' }); }
+    catch (err) { setErrorMessage(`Error rejecting user: ${err instanceof Error ? err.message : 'Unknown'}`); }
   };
+  
   const handleDisable = async (userId: string) => {
-    try {
-      await updateDoc(doc(db, 'users', userId), { status: 'disabled' });
-    } catch (err) {
-      setErrorMessage(`Error disabling user: ${err instanceof Error ? err.message : 'Unknown'}`);
-    }
+    try { await updateDoc(doc(db, 'users', userId), { status: 'disabled' }); }
+    catch (err) { setErrorMessage(`Error disabling user: ${err instanceof Error ? err.message : 'Unknown'}`); }
   };
 
   const handleDelete = async (userId: string, userName?: string) => {
     const confirmed = window.confirm(`Permanently delete ${userName || 'this user'}? This cannot be undone.`);
     if (!confirmed) return;
-    try {
-      await deleteDoc(doc(db, 'users', userId));
-    } catch (err) {
-      setErrorMessage(`Error deleting user: ${err instanceof Error ? err.message : 'Unknown'}`);
-    }
+    try { await deleteDoc(doc(db, 'users', userId)); }
+    catch (err) { setErrorMessage(`Error deleting user: ${err instanceof Error ? err.message : 'Unknown'}`); }
   };
 
-  // ✅ Update shipment status - uses firestoreDocId (real Firestore doc ID)
   const handleShipmentStatusUpdate = async (firestoreDocId: string, displayId: string, newStatus: ShipmentStatus) => {
     setUpdatingOrderId(firestoreDocId);
     try {
@@ -131,39 +105,31 @@ const AdminPanel = () => {
     }
   };
 
-  const handlePriceUpdate = () => {
-    if (!editPrice) return;
-    updateProductPrice(editPrice.id, editPrice.domestic, editPrice.export);
-    const p = products.find(pr => pr.id === editPrice.id);
-    addNotification({
-      id: `n${Date.now()}`,
-      title: 'Price Updated',
-      message: `${p?.name} - Domestic: ₹${editPrice.domestic}, Export: ₹${editPrice.export}`,
-      timestamp: new Date().toLocaleString(),
-      read: false,
-      targetRoles: ['buyer']
-    });
-    setEditPrice(null);
-  };
-
-  const shipmentStatuses: ShipmentStatus[] = ['placed', 'processing', 'shipped', 'transit', 'out_for_delivery', 'delivered'];
+  const luxuryCardStyle = "bg-[#0A1F13]/90 backdrop-blur-md border border-[rgba(212,175,55,0.2)] rounded-2xl p-6 shadow-xl hover:shadow-[0_0_15px_rgba(34,197,94,0.3)] transition-all duration-300";
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-foreground">Admin Panel</h1>
+    <div className="min-h-full -m-6 md:-m-8 p-6 md:p-8 space-y-8 animate-fade-in text-white overflow-y-auto" style={{ backgroundColor: '#0F2E1D' }}>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-[rgba(212,175,55,0.2)] pb-6">
+        <div>
+          <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-green-600">Admin Panel</h1>
+          <p className="text-green-200/60 mt-1">Manage users, orders, and system operations</p>
+        </div>
+        <button className="flex items-center gap-2 px-5 py-2.5 bg-green-500/10 text-green-400 border border-green-500/30 rounded-xl hover:bg-green-500/20 transition font-semibold shadow-lg">
+          <Lock className="w-4 h-4" /> Change PIN
+        </button>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-2 flex-wrap">
+      {/* Tabs Navigation */}
+      <div className="flex gap-3 flex-wrap p-2 bg-[#0A1F13] rounded-2xl border border-green-900/30">
         {tabs.map(t => (
           <button
             key={t}
             onClick={() => setActiveTab(t)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+            className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 flex-1 sm:flex-none min-w-[120px] text-center ${
               activeTab === t
-                ? 'gradient-primary text-primary-foreground'
-                : 'bg-card border border-input text-foreground hover:bg-muted'
+                ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-[0_0_15px_rgba(34,197,94,0.4)] border border-green-400/50'
+                : 'text-green-200/60 hover:text-green-300 hover:bg-green-900/40 border border-transparent'
             }`}
           >
             {t}
@@ -173,369 +139,245 @@ const AdminPanel = () => {
 
       {/* ─── USERS TAB ─── */}
       {activeTab === 'Users' && (
-        <div className="space-y-4">
+        <div className="space-y-6">
           <div className="flex justify-between items-center">
-            <h2 className="text-lg font-semibold text-foreground">User Management ({firestoreUsers.length})</h2>
-            <p className="text-xs text-muted-foreground">Live updates enabled</p>
+            <h2 className="text-xl font-semibold text-green-50">User Management <span className="text-green-500">({firestoreUsers.length})</span></h2>
           </div>
           {errorMessage && (
-            <div className="glass-card rounded-xl p-4 border border-destructive/30 bg-destructive/5 flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-destructive">{errorMessage}</p>
+            <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-center gap-3 text-red-400">
+              <AlertCircle className="w-5 h-5 flex-shrink-0" />
+              <p className="text-sm font-medium">{errorMessage}</p>
             </div>
           )}
-          {loadingUsers && (
-            <div className="space-y-3">
-              {[1, 2, 3].map(i => (
-                <div key={i} className="glass-card rounded-xl p-4 flex items-center justify-between animate-pulse">
-                  <div className="flex-1 space-y-2">
-                    <div className="h-4 bg-muted rounded w-1/4"></div>
-                    <div className="h-3 bg-muted rounded w-1/2"></div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {!loadingUsers && firestoreUsers.length === 0 && (
+              <div className="col-span-full p-12 text-center text-green-200/50">
+                <Users className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                <p className="text-lg">No registered users yet</p>
+              </div>
+            )}
+            
+            {!loadingUsers && firestoreUsers.map(u => (
+              <div key={u.id} className={luxuryCardStyle}>
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h3 className="text-lg font-bold text-green-50">{u.name || 'Unknown User'}</h3>
+                    <p className="text-sm text-green-200/60 mt-1">{u.email}</p>
+                    <p className="text-sm text-green-200/60">{u.phone} • {u.country}</p>
                   </div>
-                  <div className="flex gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-muted"></div>
-                    <div className="w-8 h-8 rounded-lg bg-muted"></div>
+                  <div className="flex flex-col items-end gap-2">
+                    <span className="text-xs px-3 py-1 rounded-full bg-green-900/50 text-green-300 border border-green-500/30 font-bold uppercase tracking-wider">
+                      {u.role}
+                    </span>
+                    <span className={`text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider border
+                      ${u.status === 'approved' ? 'bg-green-500/20 text-green-400 border-green-500/40' : 
+                        u.status === 'pending' ? 'bg-amber-500/20 text-amber-400 border-amber-500/40' : 
+                        'bg-red-500/20 text-red-400 border-red-500/40'}`}>
+                      {u.status}
+                    </span>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-          {!loadingUsers && firestoreUsers.length === 0 && (
-            <div className="glass-card rounded-xl p-8 text-center">
-              <Users className="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-50" />
-              <p className="text-muted-foreground">No registered users yet</p>
-            </div>
-          )}
-          {!loadingUsers && firestoreUsers.map(u => (
-            <div key={u.id} className="glass-card rounded-xl p-4 flex items-center justify-between hover:bg-muted/50 transition">
-              <div className="flex-1">
-                <p className="font-semibold text-foreground">{u.name || 'Unknown User'}</p>
-                <p className="text-sm text-muted-foreground">{u.email} • {u.phone} • {u.country}</p>
-                <p className="text-xs text-muted-foreground capitalize mt-1">
-                  Role: <span className="font-medium">{u.role}</span> •
-                  Status: <span className={u.status === 'approved' ? 'text-success font-medium' : u.status === 'pending' ? 'text-warning font-medium' : 'text-destructive font-medium'}>{u.status}</span>
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <button onClick={() => handleApprove(u.id)} className="p-2 rounded-lg bg-success/10 text-success hover:bg-success/20 transition" title="Approve"><Check className="w-4 h-4" /></button>
-                <button onClick={() => handleReject(u.id)} className="p-2 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 transition" title="Reject"><X className="w-4 h-4" /></button>
-                <button onClick={() => handleDisable(u.id)} className="p-2 rounded-lg bg-muted text-muted-foreground hover:bg-muted/80 transition" title="Disable"><Ban className="w-4 h-4" /></button>
-                <button onClick={() => handleDelete(u.id, u.name)} className="p-2 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 transition" title="Delete"><Trash2 className="w-4 h-4" /></button>
-                <button onClick={() => navigate(`/chat?userId=${u.id}`)} className="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition" title="Message"><MessageCircle className="w-4 h-4" /></button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* ─── PRODUCTS TAB ─── */}
-      {activeTab === 'Products' && (
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-foreground">🛍️ Product Management & Pricing</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="glass-card rounded-xl p-4 text-center">
-              <p className="text-sm text-muted-foreground">Total Products</p>
-              <p className="text-3xl font-bold text-primary">{products.length}</p>
-            </div>
-            <div className="glass-card rounded-xl p-4 text-center">
-              <p className="text-sm text-muted-foreground">Avg Domestic Price</p>
-              <p className="text-3xl font-bold text-primary">₹{products.length > 0 ? Math.round(products.reduce((s, p) => s + p.domesticPrice, 0) / products.length) : 0}</p>
-            </div>
-            <div className="glass-card rounded-xl p-4 text-center">
-              <p className="text-sm text-muted-foreground">Avg Export Price</p>
-              <p className="text-3xl font-bold text-primary">₹{products.length > 0 ? Math.round(products.reduce((s, p) => s + p.exportPrice, 0) / products.length) : 0}</p>
-            </div>
-          </div>
-          <div className="space-y-3">
-            {products.length === 0 ? (
-              <p className="text-muted-foreground text-center py-8">No products available</p>
-            ) : products.map(p => (
-              <div key={p.id} className={`glass-card rounded-xl p-4 transition-all ${editPrice?.id === p.id ? 'ring-2 ring-primary bg-primary/5' : ''}`}>
-                <div className="flex items-start justify-between gap-4 mb-3">
-                  <div className="flex items-center gap-2">
-                    <img src={p.image} alt={p.name} className="w-16 h-16 object-cover rounded-lg" />
-                    <div>
-                      <p className="font-semibold text-foreground text-lg">{p.name}</p>
-                      <p className="text-xs text-muted-foreground">{p.category} • {p.quantity.toLocaleString()} {p.unit}</p>
-                    </div>
-                  </div>
-                  {editPrice?.id === p.id ? (
-                    <button onClick={() => setEditPrice(null)} className="p-2 rounded-lg bg-muted hover:bg-muted/80 transition"><X className="w-4 h-4" /></button>
-                  ) : (
-                    <button onClick={() => setEditPrice({ id: p.id, domestic: p.domesticPrice, export: p.exportPrice })} className="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition"><Edit2 className="w-4 h-4" /></button>
-                  )}
+                
+                <div className="grid grid-cols-5 gap-2 pt-4 border-t border-[rgba(212,175,55,0.1)]">
+                  <button onClick={() => handleApprove(u.id)} className="col-span-1 py-2 flex justify-center rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 border border-transparent hover:border-green-500/30 transition" title="Approve"><Check className="w-4 h-4" /></button>
+                  <button onClick={() => handleReject(u.id)} className="col-span-1 py-2 flex justify-center rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-transparent hover:border-red-500/30 transition" title="Reject"><X className="w-4 h-4" /></button>
+                  <button onClick={() => handleDisable(u.id)} className="col-span-1 py-2 flex justify-center rounded-lg bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-transparent hover:border-amber-500/30 transition" title="Disable"><Ban className="w-4 h-4" /></button>
+                  <button onClick={() => handleDelete(u.id, u.name)} className="col-span-1 py-2 flex justify-center rounded-lg bg-red-900/30 text-red-500 hover:bg-red-900/50 border border-transparent hover:border-red-500/30 transition" title="Delete"><Trash2 className="w-4 h-4" /></button>
+                  <button onClick={() => navigate(`/chat?userId=${u.id}`)} className="col-span-1 py-2 flex justify-center rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-transparent hover:border-blue-500/30 transition" title="Message"><MessageCircle className="w-4 h-4" /></button>
                 </div>
-                {editPrice?.id === p.id ? (
-                  <div className="space-y-3 border-t border-border pt-3">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-xs font-medium text-muted-foreground">Domestic Price</label>
-                        <input type="number" value={editPrice.domestic} onChange={e => setEditPrice({ ...editPrice, domestic: parseFloat(e.target.value) || 0 })} className="w-full mt-1 px-3 py-2 border border-input rounded-lg bg-background text-foreground text-sm outline-none focus:ring-2 focus:ring-primary/30" />
-                      </div>
-                      <div>
-                        <label className="text-xs font-medium text-muted-foreground">Export Price</label>
-                        <input type="number" value={editPrice.export} onChange={e => setEditPrice({ ...editPrice, export: parseFloat(e.target.value) || 0 })} className="w-full mt-1 px-3 py-2 border border-input rounded-lg bg-background text-foreground text-sm outline-none focus:ring-2 focus:ring-primary/30" />
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <button onClick={handlePriceUpdate} disabled={editPrice.domestic <= 0 || editPrice.export <= 0} className="flex-1 px-4 py-2 bg-success/10 text-success hover:bg-success/20 disabled:opacity-50 rounded-lg font-medium transition flex items-center justify-center gap-2 text-sm"><Check className="w-4 h-4" /> Save</button>
-                      <button onClick={() => setEditPrice(null)} className="flex-1 px-4 py-2 bg-muted rounded-lg text-sm">Cancel</button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div className="bg-muted rounded-lg p-3"><p className="text-xs text-muted-foreground mb-1">Domestic</p><p className="text-2xl font-bold text-primary">₹{p.domesticPrice.toLocaleString()}</p></div>
-                    <div className="bg-muted rounded-lg p-3"><p className="text-xs text-muted-foreground mb-1">Export</p><p className="text-2xl font-bold text-primary">₹{p.exportPrice.toLocaleString()}</p></div>
-                  </div>
-                )}
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* ─── PAYMENTS TAB ─── */}
-      {activeTab === 'Payments' && (
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-foreground">Payment Verification</h2>
-          {!pinVerified ? (
-            <div className="glass-card rounded-xl p-6 max-w-sm mx-auto text-center space-y-4">
-              <Shield className="w-12 h-12 text-primary mx-auto" />
-              <p className="font-semibold text-foreground">Enter Transaction PIN</p>
-              <input type="password" maxLength={4} className="w-32 mx-auto px-4 py-2 border border-input rounded-lg bg-background text-center text-lg tracking-widest outline-none focus:ring-2 focus:ring-primary/30" value={txnPin} onChange={e => setTxnPin(e.target.value.replace(/\D/g, ''))} placeholder="••••" />
-              <button onClick={() => { if (txnPin === ADMIN_PIN) setPinVerified(true); else alert('Invalid PIN'); }} className="gradient-primary text-primary-foreground px-6 py-2 rounded-lg font-medium hover:opacity-90 transition block mx-auto">Verify</button>
-            </div>
-          ) : (
-            <>
-              <div className="grid grid-cols-3 gap-4 mb-4">
-                <div className="glass-card rounded-xl p-4 text-center"><p className="text-sm text-muted-foreground">Total Received</p><p className="text-2xl font-bold text-primary">₹{payments.filter(p => p.status === 'approved').reduce((s, p) => s + p.amount, 0).toLocaleString()}</p></div>
-                <div className="glass-card rounded-xl p-4 text-center"><p className="text-sm text-muted-foreground">Pending</p><p className="text-2xl font-bold text-warning">{payments.filter(p => p.status === 'pending').length}</p></div>
-                <div className="glass-card rounded-xl p-4 text-center"><p className="text-sm text-muted-foreground">Total TXN</p><p className="text-2xl font-bold text-secondary">{payments.length}</p></div>
-              </div>
-              {payments.length === 0 && <p className="text-muted-foreground">No payments yet</p>}
-              {payments.map(p => (
-                <div key={p.id} className="glass-card rounded-xl p-4 space-y-2">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="font-semibold text-foreground">{p.buyerName}</p>
-                      <p className="text-xs text-muted-foreground">{p.buyerEmail} • TXN: {p.transactionId} • UTR: {p.utrNumber}</p>
-                      <p className="text-xs text-muted-foreground">{p.timestamp}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-lg font-bold text-primary">₹{p.amount.toLocaleString()}</p>
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${p.status === 'approved' ? 'bg-success/10 text-success' : p.status === 'pending' ? 'bg-warning/10 text-warning' : 'bg-destructive/10 text-destructive'}`}>{p.status.toUpperCase()}</span>
-                    </div>
-                  </div>
-                  {p.status === 'pending' && (
-                    <div className="flex gap-2 pt-2 border-t border-border">
-                      <button onClick={() => { updatePaymentStatus(p.id, 'approved', 'Verified by admin'); addNotification({ id: `n${Date.now()}`, title: 'Payment Approved ✅', message: `Your payment of ₹${p.amount.toLocaleString()} has been approved.`, timestamp: new Date().toLocaleString(), read: false, targetRoles: ['buyer'] }); }} className="px-4 py-1.5 rounded-lg bg-success/10 text-success hover:bg-success/20 transition text-sm font-medium flex items-center gap-1"><Check className="w-3 h-3" /> Approve</button>
-                      <button onClick={() => { updatePaymentStatus(p.id, 'rejected', 'Rejected by admin'); addNotification({ id: `n${Date.now()}`, title: 'Payment Rejected ❌', message: `Your payment of ₹${p.amount.toLocaleString()} was rejected.`, timestamp: new Date().toLocaleString(), read: false, targetRoles: ['buyer'] }); }} className="px-4 py-1.5 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 transition text-sm font-medium flex items-center gap-1"><X className="w-3 h-3" /> Reject</button>
-                      <button onClick={() => generatePaymentReceipt(p)} className="px-4 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition text-sm font-medium flex items-center gap-1"><Download className="w-3 h-3" /> Receipt</button>
-                    </div>
-                  )}
-                  {p.status !== 'pending' && (
-                    <div className="flex gap-2 pt-2 border-t border-border">
-                      <button onClick={() => generatePaymentReceipt(p)} className="px-4 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition text-sm font-medium flex items-center gap-1"><Download className="w-3 h-3" /> Receipt</button>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </>
-          )}
-        </div>
-      )}
-
       {/* ─── ORDERS TAB ─── */}
       {activeTab === 'Orders' && (
-        <div className="space-y-3">
-          <h2 className="text-lg font-semibold text-foreground">All Orders ({orders.length})</h2>
-          {orders.map(o => (
-            <div key={o.id} className="glass-card rounded-xl p-4">
-              <div className="flex justify-between">
-                <div>
-                  <p className="font-semibold text-foreground">{o.productName}</p>
-                  <p className="text-sm text-muted-foreground">{o.id} • {o.buyerName} • {o.orderDate}</p>
-                  <div className="flex gap-2 mt-1">
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${o.paymentCompleted ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>{o.paymentCompleted ? '💰 Paid' : '⏳ Payment Pending'}</span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${o.farmerAcceptStatus === 'accepted' ? 'bg-success/10 text-success' : o.farmerAcceptStatus === 'rejected' ? 'bg-destructive/10 text-destructive' : 'bg-warning/10 text-warning'}`}>Farmer: {o.farmerAcceptStatus}</span>
+        <div className="space-y-6">
+          <h2 className="text-xl font-semibold text-green-50">Recent Orders <span className="text-green-500">({orders.length})</span></h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {orders.length === 0 && <p className="text-green-200/50">No orders placed yet.</p>}
+            {orders.map(o => (
+              <div key={o.id} className={luxuryCardStyle}>
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h3 className="text-lg font-bold text-green-50">{o.productName}</h3>
+                    <p className="text-sm text-green-200/60 mt-1">ID: {o.id}</p>
+                    <p className="text-sm text-green-200/60">Date: {o.orderDate}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-green-600">
+                      ₹{o.total.toLocaleString()}
+                    </p>
                   </div>
                 </div>
-                <p className="font-bold text-primary">₹{o.total.toLocaleString()}</p>
+                <div className="bg-[#0F2E1D] rounded-xl p-4 border border-green-900/50 mb-4">
+                  <p className="text-xs text-green-400 font-bold mb-1 uppercase tracking-wider">Buyer Info</p>
+                  <p className="text-sm text-green-50 font-medium">{o.buyerName}</p>
+                  <p className="text-sm text-green-200/60">{o.buyerEmail} • {o.buyerPhone}</p>
+                </div>
+                <div className="flex gap-3 flex-wrap">
+                  <span className={`text-xs px-3 py-1.5 rounded-lg border font-bold ${o.paymentCompleted ? 'bg-green-500/20 text-green-400 border-green-500/40' : 'bg-amber-500/20 text-amber-400 border-amber-500/40'}`}>
+                    {o.paymentCompleted ? '💰 Payment Verified' : '⏳ Payment Pending'}
+                  </span>
+                  <span className={`text-xs px-3 py-1.5 rounded-lg border font-bold ${o.farmerAcceptStatus === 'accepted' ? 'bg-green-500/20 text-green-400 border-green-500/40' : o.farmerAcceptStatus === 'rejected' ? 'bg-red-500/20 text-red-400 border-red-500/40' : 'bg-amber-500/20 text-amber-400 border-amber-500/40'}`}>
+                    Farmer: {o.farmerAcceptStatus.toUpperCase()}
+                  </span>
+                </div>
               </div>
-            </div>
-          ))}
-          {orders.length === 0 && <p className="text-muted-foreground">No orders</p>}
+            ))}
+          </div>
         </div>
       )}
 
       {/* ─── SHIPMENTS TAB ─── */}
       {activeTab === 'Shipments' && (
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-foreground">
-            Shipment Control
-            <span className="ml-2 text-sm font-normal text-muted-foreground">({firestoreOrders.length} orders)</span>
-          </h2>
+        <div className="space-y-6">
+          <h2 className="text-xl font-semibold text-green-50">Shipment Control <span className="text-green-500">({firestoreOrders.length})</span></h2>
+          <div className="grid grid-cols-1 gap-6">
+            {firestoreOrders.length === 0 && <p className="text-green-200/50">No orders found.</p>}
+            {firestoreOrders.map(o => {
+              const currentStepIdx = SHIPMENT_STEPS.findIndex(s => s.status === o.shipmentStatus);
+              const isUpdating = updatingOrderId === o.firestoreDocId;
 
-          {firestoreOrders.length === 0 && (
-            <p className="text-muted-foreground text-center py-8">No orders found in database</p>
-          )}
-
-          {firestoreOrders.map(o => {
-            const currentStepIdx = SHIPMENT_STEPS.findIndex(s => s.status === o.shipmentStatus);
-            const isUpdating = updatingOrderId === o.firestoreDocId;
-
-            return (
-              <div key={o.id} className="glass-card rounded-xl p-5 space-y-5">
-
-                {/* Order Info */}
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-semibold text-foreground text-lg">{o.productName}</p>
-                    <p className="text-sm text-muted-foreground">{o.id} • {o.buyerName || o.buyerEmail}</p>
-                    <span className="inline-block mt-1 text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium capitalize">
-                      {o.shipmentStatus?.replace(/_/g, ' ')}
-                    </span>
-                  </div>
-                  {isUpdating && (
-                    <span className="text-xs text-muted-foreground animate-pulse">Updating...</span>
-                  )}
-                </div>
-
-                {/* ✅ Step-by-step status buttons */}
-                <div>
-                  <p className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wide">
-                    Update Shipment Status
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {SHIPMENT_STEPS.map((step, idx) => {
-                      const isDone = idx < currentStepIdx;
-                      const isCurrent = idx === currentStepIdx;
-                      const isNext = idx === currentStepIdx + 1;
-
-                      return (
-                        <button
-                          key={step.status}
-                          disabled={isUpdating || isCurrent}
-                          onClick={() => handleShipmentStatusUpdate(o.firestoreDocId, o.id, step.status)}
-                          className={`
-                            flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all border
-                            ${isCurrent
-                              ? 'bg-primary text-primary-foreground border-primary cursor-default shadow-md'
-                              : isDone
-                              ? 'bg-success/10 text-success border-success/30 hover:bg-success/20'
-                              : isNext
-                              ? 'bg-warning/10 text-warning border-warning/40 hover:bg-warning/20 ring-1 ring-warning/30'
-                              : 'bg-muted text-muted-foreground border-border hover:bg-muted/80'
-                            }
-                            ${isUpdating ? 'opacity-50 cursor-not-allowed' : ''}
-                          `}
-                          title={
-                            isCurrent ? 'Current status' :
-                            isDone ? 'Already completed — click to revert' :
-                            isNext ? 'Next step — click to advance' :
-                            'Click to jump to this status'
-                          }
-                        >
-                          <span>{step.emoji}</span>
-                          <span>{step.label}</span>
-                          {isCurrent && <Check className="w-3.5 h-3.5 ml-0.5" />}
-                          {isNext && <ChevronRight className="w-3.5 h-3.5 ml-0.5" />}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Visual progress bar */}
-                  <div className="mt-4 flex gap-1">
-                    {SHIPMENT_STEPS.map((step, idx) => (
-                      <div
-                        key={step.status}
-                        className={`flex-1 h-1.5 rounded-full transition-all ${
-                          idx <= currentStepIdx ? 'bg-primary' : 'bg-border'
-                        }`}
-                      />
-                    ))}
-                  </div>
-                  <div className="flex justify-between mt-1">
-                    <span className="text-xs text-muted-foreground">Placed</span>
-                    <span className="text-xs text-muted-foreground">Delivered</span>
-                  </div>
-                </div>
-
-                {/* Tracking info */}
-                <div className="border-t border-border pt-3 flex justify-end">
-                  {editTracking?.id === o.id ? (
-                    <div className="flex flex-col sm:flex-row items-center gap-2 w-full">
-                      <input type="text" placeholder="Tracking Number" className="flex-1 w-full px-3 py-1.5 text-sm border border-input bg-background rounded-lg" value={editTracking.trackingNumber} onChange={e => setEditTracking({ ...editTracking, trackingNumber: e.target.value })} />
-                      <input type="text" placeholder="Tracking Link (Optional)" className="flex-1 w-full px-3 py-1.5 text-sm border border-input bg-background rounded-lg" value={editTracking.trackingLink} onChange={e => setEditTracking({ ...editTracking, trackingLink: e.target.value })} />
-                      <div className="flex gap-2 w-full sm:w-auto">
-                        <button onClick={() => { updateTrackingInfo(o.id, editTracking.trackingNumber, editTracking.trackingLink); setEditTracking(null); }} className="px-4 py-1.5 flex-1 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:opacity-90">Save</button>
-                        <button onClick={() => setEditTracking(null)} className="px-4 py-1.5 flex-1 bg-muted text-foreground rounded-lg text-sm font-medium">Cancel</button>
-                      </div>
+              return (
+                <div key={o.id} className={luxuryCardStyle}>
+                  <div className="flex items-start justify-between gap-3 mb-6">
+                    <div>
+                      <h3 className="text-xl font-bold text-green-50">{o.productName}</h3>
+                      <p className="text-sm text-green-200/60">{o.id} • {o.buyerName || o.buyerEmail}</p>
                     </div>
-                  ) : (
-                    <button
-                      onClick={() => setEditTracking({ id: o.id, trackingNumber: o.trackingNumber || '', trackingLink: o.trackingLink || '' })}
-                      className="flex items-center gap-2 text-sm text-primary hover:underline font-medium"
-                    >
-                      <Edit2 className="w-4 h-4" /> Edit Tracking
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+                    {isUpdating ? (
+                      <span className="text-xs font-bold text-amber-400 animate-pulse bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/30">UPDATING...</span>
+                    ) : (
+                      <span className="text-xs font-bold text-green-400 bg-green-500/10 px-3 py-1 rounded-full border border-green-500/30 uppercase tracking-widest">
+                        {o.shipmentStatus?.replace(/_/g, ' ')}
+                      </span>
+                    )}
+                  </div>
 
-      {/* ─── PRICING TAB ─── */}
-      {activeTab === 'Pricing' && (
-        <div className="space-y-3">
-          <h2 className="text-lg font-semibold text-foreground">Price Management</h2>
-          {products.map(p => (
-            <div key={p.id} className="glass-card rounded-xl p-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <img src={p.image} alt={p.name} className="w-12 h-12 object-cover rounded-lg bg-white/10" />
-                <div><p className="font-semibold text-foreground">{p.name}</p><p className="text-sm text-muted-foreground">D: ₹{p.domesticPrice}/{p.unit} | E: ₹{p.exportPrice}/{p.unit}</p></div>
-              </div>
-              {editPrice?.id === p.id ? (
-                <div className="flex items-center gap-2">
-                  <input type="number" className="w-20 px-2 py-1 border border-input rounded text-sm bg-background text-foreground" value={editPrice.domestic} onChange={e => setEditPrice({ ...editPrice, domestic: +e.target.value })} />
-                  <input type="number" className="w-20 px-2 py-1 border border-input rounded text-sm bg-background text-foreground" value={editPrice.export} onChange={e => setEditPrice({ ...editPrice, export: +e.target.value })} />
-                  <button onClick={handlePriceUpdate} className="px-3 py-1 gradient-primary text-primary-foreground rounded text-sm">Save</button>
-                  <button onClick={() => setEditPrice(null)} className="px-3 py-1 bg-muted rounded text-sm text-foreground">Cancel</button>
+                  <div className="bg-[#0F2E1D] rounded-xl p-5 border border-green-900/50">
+                    <p className="text-xs font-bold text-green-400 mb-4 uppercase tracking-wider">Update Status</p>
+                    <div className="flex flex-wrap gap-2">
+                      {SHIPMENT_STEPS.map((step, idx) => {
+                        const isDone = idx < currentStepIdx;
+                        const isCurrent = idx === currentStepIdx;
+                        const isNext = idx === currentStepIdx + 1;
+
+                        return (
+                          <button
+                            key={step.status}
+                            disabled={isUpdating || isCurrent}
+                            onClick={() => handleShipmentStatusUpdate(o.firestoreDocId, o.id, step.status)}
+                            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all border
+                              ${isCurrent ? 'bg-gradient-to-r from-green-500 to-green-600 text-white border-green-400/50 shadow-[0_0_10px_rgba(34,197,94,0.3)] cursor-default'
+                                : isDone ? 'bg-green-900/60 text-green-300 border-green-700/50 hover:bg-green-800/60'
+                                : isNext ? 'bg-amber-900/40 text-amber-300 border-amber-500/50 hover:bg-amber-800/50 shadow-[0_0_10px_rgba(245,158,11,0.2)]'
+                                : 'bg-transparent text-green-200/40 border-green-900/50 hover:bg-[#0A1F13]'
+                              } ${isUpdating ? 'opacity-50 cursor-not-allowed' : ''}
+                            `}
+                          >
+                            <span className="text-lg">{step.emoji}</span>
+                            <span>{step.label}</span>
+                            {isCurrent && <Check className="w-4 h-4 ml-1" />}
+                            {isNext && <ChevronRight className="w-4 h-4 ml-1" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="mt-6 flex gap-1.5">
+                      {SHIPMENT_STEPS.map((step, idx) => (
+                        <div key={step.status} className={`flex-1 h-2 rounded-full transition-all duration-500 ${idx <= currentStepIdx ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-green-950'}`} />
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="mt-6 pt-4 border-t border-[rgba(212,175,55,0.1)] flex justify-end">
+                    {editTracking?.id === o.id ? (
+                      <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
+                        <input type="text" placeholder="Tracking Number" className="flex-1 w-full px-4 py-2 bg-[#0F2E1D] border border-green-900/50 rounded-xl outline-none focus:border-green-500/50 text-green-50" value={editTracking.trackingNumber} onChange={e => setEditTracking({ ...editTracking, trackingNumber: e.target.value })} />
+                        <input type="text" placeholder="Tracking Link (Optional)" className="flex-1 w-full px-4 py-2 bg-[#0F2E1D] border border-green-900/50 rounded-xl outline-none focus:border-green-500/50 text-green-50" value={editTracking.trackingLink} onChange={e => setEditTracking({ ...editTracking, trackingLink: e.target.value })} />
+                        <div className="flex gap-2 w-full sm:w-auto">
+                          <button onClick={() => { updateTrackingInfo(o.id, editTracking.trackingNumber, editTracking.trackingLink); setEditTracking(null); }} className="px-6 py-2 bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold transition">Save</button>
+                          <button onClick={() => setEditTracking(null)} className="px-6 py-2 bg-transparent border border-green-900/50 text-green-200/60 hover:text-green-50 rounded-xl font-bold transition">Cancel</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button onClick={() => setEditTracking({ id: o.id, trackingNumber: o.trackingNumber || '', trackingLink: o.trackingLink || '' })} className="flex items-center gap-2 text-sm font-bold text-green-400 hover:text-green-300 transition">
+                        <Edit2 className="w-4 h-4" /> Edit Tracking
+                      </button>
+                    )}
+                  </div>
                 </div>
-              ) : (
-                <button onClick={() => setEditPrice({ id: p.id, domestic: p.domesticPrice, export: p.exportPrice })} className="px-3 py-1.5 border border-primary text-primary rounded-lg text-sm hover:bg-primary/10 transition">Edit Price</button>
-              )}
-            </div>
-          ))}
+              );
+            })}
+          </div>
         </div>
       )}
 
       {/* ─── NOTIFICATIONS TAB ─── */}
       {activeTab === 'Notifications' && (
-        <div className="space-y-3">
-          <h2 className="text-lg font-semibold text-foreground">Notifications</h2>
-          {notifications.length === 0 && <p className="text-muted-foreground">No notifications</p>}
-          {notifications.map(n => (
-            <div key={n.id} className="glass-card rounded-xl p-4">
-              <p className="font-semibold text-foreground">{n.title}</p>
-              <p className="text-sm text-muted-foreground">{n.message}</p>
-              <p className="text-xs text-muted-foreground">{n.timestamp} • Target: {n.targetRoles.join(', ')}</p>
-            </div>
-          ))}
+        <div className="space-y-6">
+          <h2 className="text-xl font-semibold text-green-50">System Notifications</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {notifications.length === 0 && <p className="text-green-200/50">No notifications.</p>}
+            {notifications.map(n => (
+              <div key={n.id} className={luxuryCardStyle}>
+                <div className="flex items-start gap-4">
+                  <div className="bg-green-500/20 p-3 rounded-xl border border-green-500/30">
+                    <Bell className="w-6 h-6 text-green-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-green-50">{n.title}</h3>
+                    <p className="text-sm text-green-200/80 mt-1 leading-relaxed">{n.message}</p>
+                    <p className="text-xs text-green-200/50 mt-3 font-medium tracking-wide">
+                      {n.timestamp} • VISIBLE TO: {n.targetRoles.join(', ').toUpperCase()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
       {/* ─── REVENUE TAB ─── */}
       {activeTab === 'Revenue' && (
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-foreground">Revenue Statistics</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="glass-card rounded-xl p-5 text-center"><p className="text-sm text-muted-foreground">Total Revenue</p><p className="text-3xl font-bold text-primary">₹{orders.reduce((s, o) => s + o.total, 0).toLocaleString()}</p></div>
-            <div className="glass-card rounded-xl p-5 text-center"><p className="text-sm text-muted-foreground">Total Orders</p><p className="text-3xl font-bold text-secondary">{orders.length}</p></div>
-            <div className="glass-card rounded-xl p-5 text-center"><p className="text-sm text-muted-foreground">Avg Order Value</p><p className="text-3xl font-bold text-accent">₹{orders.length ? Math.round(orders.reduce((s, o) => s + o.total, 0) / orders.length).toLocaleString() : 0}</p></div>
+        <div className="space-y-6">
+          <h2 className="text-xl font-semibold text-green-50">Revenue Overview</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className={`${luxuryCardStyle} flex flex-col items-center justify-center py-10`}>
+              <div className="bg-green-500/20 p-4 rounded-2xl border border-green-500/30 mb-4 shadow-[0_0_20px_rgba(34,197,94,0.2)]">
+                <DollarSign className="w-8 h-8 text-green-400" />
+              </div>
+              <p className="text-sm text-green-200/60 font-bold uppercase tracking-wider mb-2">Total Revenue</p>
+              <p className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-green-300 to-green-600">
+                ₹{orders.reduce((s, o) => s + o.total, 0).toLocaleString()}
+              </p>
+            </div>
+            
+            <div className={`${luxuryCardStyle} flex flex-col items-center justify-center py-10`}>
+              <div className="bg-blue-500/20 p-4 rounded-2xl border border-blue-500/30 mb-4 shadow-[0_0_20px_rgba(59,130,246,0.2)]">
+                <ClipboardList className="w-8 h-8 text-blue-400" />
+              </div>
+              <p className="text-sm text-green-200/60 font-bold uppercase tracking-wider mb-2">Total Orders</p>
+              <p className="text-4xl font-extrabold text-white">
+                {orders.length}
+              </p>
+            </div>
+
+            <div className={`${luxuryCardStyle} flex flex-col items-center justify-center py-10`}>
+              <div className="bg-amber-500/20 p-4 rounded-2xl border border-amber-500/30 mb-4 shadow-[0_0_20px_rgba(245,158,11,0.2)]">
+                <TrendingUp className="w-8 h-8 text-amber-400" />
+              </div>
+              <p className="text-sm text-green-200/60 font-bold uppercase tracking-wider mb-2">Avg Order Value</p>
+              <p className="text-4xl font-extrabold text-white">
+                ₹{orders.length ? Math.round(orders.reduce((s, o) => s + o.total, 0) / orders.length).toLocaleString() : 0}
+              </p>
+            </div>
           </div>
         </div>
       )}

@@ -1,7 +1,8 @@
 import { useNavigate } from "react-router-dom";
 import { useStore } from "@/lib/store";
 import { useTranslation } from "react-i18next";
-import { Package, Users, ShoppingCart, TrendingUp, MapPin, Truck, Badge } from "lucide-react";
+import { Package, Users, ShoppingCart, TrendingUp, MapPin, Truck, Badge, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { useState } from "react";
 
 const Marketplace = () => {
@@ -13,6 +14,8 @@ const Marketplace = () => {
   const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
   const [selectedQuantity, setSelectedQuantity] = useState<{ [key: string]: number }>({});
   const [showQuantityModal, setShowQuantityModal] = useState<string | null>(null);
+  const [productToDelete, setProductToDelete] = useState<string | null>(null);
+  const { deleteProduct, updateProductExportStatus } = useStore();
 
   // Map product IDs to translation keys
   const productNameMap: Record<string, string> = {
@@ -187,6 +190,14 @@ const Marketplace = () => {
     }, 300);
   };
 
+  const handleDeleteConfirm = async () => {
+    if (productToDelete) {
+      await deleteProduct(productToDelete);
+      setProductToDelete(null);
+      toast.success("Product deleted successfully");
+    }
+  };
+
   const StatCard = ({ icon: Icon, label, value, color }: any) => (
     <div className="premium-card p-6 flex items-center gap-4 hover:shadow-lg transition-all duration-300">
       <div className={`${color} p-4 rounded-xl flex items-center justify-center`}>
@@ -222,7 +233,7 @@ const Marketplace = () => {
           )}
           
           {/* Stock Badge */}
-          <div className="absolute top-3 right-3 flex gap-2">
+          <div className="absolute top-3 left-3 flex gap-2">
             {product.quantity > 10000 && (
               <div className="bg-green-500/90 backdrop-blur-sm text-white px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1">
                 <Badge className="w-3 h-3" /> {t('in_stock')}
@@ -234,6 +245,20 @@ const Marketplace = () => {
               </div>
             )}
           </div>
+
+          {/* Delete Button */}
+          {(isAdmin || (isFarmer && product.farmerName === currentUser?.name)) && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setProductToDelete(product.id);
+              }}
+              className="absolute top-3 right-3 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition shadow-lg z-10"
+              title="Delete Product"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
 
           {/* Category Badge Bottom Left */}
           <div className="absolute bottom-3 left-3">
@@ -254,6 +279,26 @@ const Marketplace = () => {
               {getDescription(product.description)}
             </p>
           </div>
+
+          {/* Export Available Toggle (Admin/Farmer only) */}
+          {(isAdmin || (isFarmer && product.farmerName === currentUser?.name)) && (
+            <div className="flex items-center justify-between mt-1 mb-1 p-3 bg-primary/5 rounded-lg border border-primary/10 hover:bg-primary/10 transition-colors">
+              <span className="text-sm font-semibold text-foreground">Export Available</span>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  className="sr-only peer"
+                  checked={product.exportAvailable}
+                  onChange={async (e) => {
+                    e.stopPropagation();
+                    await updateProductExportStatus(product.id, e.target.checked);
+                    toast.success("Export status updated");
+                  }}
+                />
+                <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+              </label>
+            </div>
+          )}
 
 
 
@@ -461,6 +506,35 @@ const Marketplace = () => {
                 className="flex-1 btn-primary py-3 rounded-lg font-semibold"
               >
                 {t('button_submit')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {productToDelete && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4 animate-fade-in">
+          <div className="premium-card bg-[#0F2E1D] border border-red-500/20 rounded-2xl p-8 max-w-sm w-full space-y-6 shadow-2xl text-center">
+            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Trash2 className="w-8 h-8 text-red-500" />
+            </div>
+            <h2 className="text-xl font-bold text-white mb-2">Delete Product</h2>
+            <p className="text-gray-300 text-sm">
+              Are you sure you want to delete this product? This action cannot be undone.
+            </p>
+            <div className="flex gap-3 mt-8">
+              <button
+                onClick={() => setProductToDelete(null)}
+                className="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-3 rounded-xl font-bold transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                className="flex-1 bg-red-500 hover:bg-red-600 text-white py-3 rounded-xl font-bold transition shadow-[0_0_15px_rgba(239,68,68,0.3)]"
+              >
+                Yes, Delete
               </button>
             </div>
           </div>

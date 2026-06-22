@@ -442,6 +442,32 @@ const Login = () => {
               {googleLoading ? 'Signing in...' : t('continueWithGoogle')}
             </button>
 
+            {/* Local dev testing bypass */}
+            {(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (
+              <div className="flex gap-2 mt-4">
+                <button onClick={() => {
+                  setCurrentUser({
+                    id: 'farmer_dev', name: 'Dev Farmer', email: 'farmer@test.com', phone: '1234567890',
+                    country: 'India', role: 'farmer', status: 'approved',
+                    userType: 'domestic', verified: true
+                  });
+                  navigate('/farmer-dashboard');
+                }} className="flex-1 bg-green-900/40 text-green-400 border border-green-700/50 py-2 rounded-xl text-sm font-semibold hover:bg-green-800/40 transition">
+                  [DEV] Test Farmer
+                </button>
+                <button onClick={() => {
+                  setCurrentUser({
+                    id: 'buyer_dev', name: 'Dev Buyer', email: 'buyer@test.com', phone: '0987654321',
+                    country: 'India', role: 'buyer', status: 'approved',
+                    userType: 'domestic', verified: true
+                  });
+                  navigate('/dashboard');
+                }} className="flex-1 bg-blue-900/40 text-blue-400 border border-blue-700/50 py-2 rounded-xl text-sm font-semibold hover:bg-blue-800/40 transition">
+                  [DEV] Test Buyer
+                </button>
+              </div>
+            )}
+
             <p className="text-center text-sm text-muted-foreground mt-6">
               {t('dontHaveAccount')}{' '}
               <button onClick={() => setIsSignup(true)} className="text-primary font-semibold hover:text-secondary transition">{t('signUp')}</button>

@@ -6,10 +6,23 @@ import { PRODUCTS } from '@/assets/products';
 export type UserRole = 'farmer' | 'buyer' | 'admin';
 export type UserStatus = 'pending' | 'approved' | 'rejected' | 'disabled';
 export type UserType = 'domestic' | 'international';
-export type ShipmentStatus = 'placed' | 'processing' | 'shipped' | 'transit' | 'out_for_delivery' | 'delivered';
+export type ShipmentStatus = 'placed' | 'packing' | 'container_stuffing' | 'customs_clearance' | 'vessel_departure' | 'arrival' | 'delivered' | 'processing' | 'shipped' | 'transit' | 'out_for_delivery';
 export type PaymentMethod = 'upi';
 export type PaymentStatus = 'pending' | 'approved' | 'rejected' | 'failed';
 export type OrderAcceptStatus = 'pending' | 'accepted' | 'rejected';
+
+export interface RFQ {
+  id: string;
+  buyerId: string;
+  productName: string;
+  quantity: number;
+  unit: string;
+  destinationCountry: string;
+  expectedDeliveryDate: string;
+  additionalNotes: string;
+  status: 'pending' | 'replied' | 'closed';
+  submittedAt: string;
+}
 
 export interface Payment {
   id: string;
@@ -110,6 +123,7 @@ interface AppState {
   payments: Payment[];
   messages: ChatMessage[];
   notifications: Notification[];
+  rfqs: RFQ[];
   setCurrentUser: (user: User | null) => void;
   addUser: (user: User) => void;
   updateUserStatus: (userId: string, status: UserStatus) => void;
@@ -127,6 +141,9 @@ interface AppState {
   markNotificationRead: (id: string) => void;
   addProduct: (product: Product) => Promise<void>;
   setProducts: (products: Product[]) => void;
+  deleteProduct: (productId: string) => Promise<void>;
+  updateProductExportStatus: (productId: string, exportAvailable: boolean) => Promise<void>;
+  submitRFQ: (rfq: RFQ) => Promise<void>;
 }
 
 const defaultProducts: Product[] = PRODUCTS as any;
@@ -154,6 +171,7 @@ export const useStore = create<AppState>((set) => ({
   payments: [],
   messages: [],
   notifications: [],
+  rfqs: [],
   setCurrentUser: (user) => set({ currentUser: user }),
   addUser: (user) => set((s) => ({ users: [...s.users, user] })),
   updateUserStatus: (userId, status) => set((s) => ({ users: s.users.map(u => u.id === userId ? { ...u, status } : u) })),
@@ -186,10 +204,33 @@ export const useStore = create<AppState>((set) => ({
     await addDoc(collection(db, "products"), p);
     set((s) => ({ products: [...s.products, { ...p, id: p.id || Date.now().toString() }] }));
   },
+  deleteProduct: async (productId) => {
+    try {
+      const { doc, deleteDoc } = await import('firebase/firestore');
+      await deleteDoc(doc(db, "products", productId));
+    } catch (e) {
+      console.warn("Product might not be in Firestore, removing locally", e);
+    }
+    set((s) => ({ products: s.products.filter(p => p.id !== productId) }));
+  },
+  updateProductExportStatus: async (productId, exportAvailable) => {
+    try {
+      const { doc, updateDoc } = await import('firebase/firestore');
+      const productRef = doc(db, "products", productId);
+      await updateDoc(productRef, { exportAvailable });
+    } catch (e) {
+      console.warn("Error updating export status in db", e);
+    }
+    set((s) => ({ products: s.products.map(p => p.id === productId ? { ...p, exportAvailable } : p) }));
+  },
   updateOrderFarmerStatus: (orderId, status) => set((s) => ({ orders: s.orders.map(o => o.id === orderId ? { ...o, farmerAcceptStatus: status } : o) })),
   markOrderPaymentComplete: (orderId) => set((s) => ({ orders: s.orders.map(o => o.id === orderId ? { ...o, paymentCompleted: true } : o) })),
   updateTrackingInfo: (orderId, trackingNumber, trackingLink) => set((s) => ({ orders: s.orders.map(o => o.id === orderId ? { ...o, trackingNumber, trackingLink } : o) })),
   addMessage: (msg) => set((s) => ({ messages: [...s.messages, msg] })),
   addNotification: (n) => set((s) => ({ notifications: [...s.notifications, n] })),
   markNotificationRead: (id) => set((s) => ({ notifications: s.notifications.map(n => n.id === id ? { ...n, read: true } : n) })),
+  submitRFQ: async (rfq) => {
+    await addDoc(collection(db, "rfqs"), rfq);
+    set((s) => ({ rfqs: [...s.rfqs, rfq] }));
+  },
 }));

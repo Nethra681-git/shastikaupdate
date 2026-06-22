@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import { useState } from "react";
 import { Globe, Check } from "lucide-react";
 
-export default function LanguageSwitcher() {
+export default function LanguageSwitcher({ className = "fixed top-4 right-4 z-50" }: { className?: string }) {
   const { i18n } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -57,7 +57,7 @@ export default function LanguageSwitcher() {
   const currentLang = languages.find((l) => l.code === i18n.language) || languages[0];
 
   return (
-    <div className="fixed top-4 right-4 z-50">
+    <div className={className}>
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold shadow-lg hover:shadow-xl transition-all hover:scale-105 border border-green-400/20 text-sm"
