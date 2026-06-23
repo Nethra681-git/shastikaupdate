@@ -149,6 +149,7 @@ interface AppState {
   updateProductGrade: (productId: string, grade: string) => Promise<void>;
   updateProductGradePrices: (productId: string, gradeAPrice: number, gradeBPrice: number) => Promise<void>;
   submitRFQ: (rfq: RFQ) => Promise<void>;
+  deleteOrder: (orderId: string) => Promise<void>;
 }
 
 const defaultProducts: Product[] = PRODUCTS as any;
@@ -185,6 +186,15 @@ export const useStore = create<AppState>((set) => ({
     await addDoc(collection(db, "orders"), order);
     set((s) => ({ orders: [...s.orders, order] }));
   },
+  deleteOrder: async (orderId) => {
+    try {
+      const { doc, deleteDoc } = await import('firebase/firestore');
+      await deleteDoc(doc(db, "orders", orderId));
+    } catch (e) {
+      console.warn("Order might not be in Firestore, removing locally", e);
+    }
+    set((s) => ({ orders: s.orders.filter(o => o.id !== orderId) }));
+  },
   addPayment: (p) => set((s) => ({ payments: [...s.payments, p] })),
   updatePaymentStatus: (paymentId, status, note) => set((s) => ({
     payments: s.payments.map(p => p.id === paymentId ? { ...p, status, adminNote: note || p.adminNote } : p)
@@ -215,8 +225,10 @@ export const useStore = create<AppState>((set) => ({
     set((s) => ({ products: s.products.map(p => p.id === productId ? { ...p, quantity } : p) }));
   },
   addProduct: async (p) => {
-    await addDoc(collection(db, "products"), p);
-    set((s) => ({ products: [...s.products, { ...p, id: p.id || Date.now().toString() }] }));
+    const productId = p.id || Date.now().toString();
+    const { doc, setDoc } = await import('firebase/firestore');
+    await setDoc(doc(db, "products", productId), { ...p, id: productId });
+    set((s) => ({ products: [...s.products, { ...p, id: productId }] }));
   },
   deleteProduct: async (productId) => {
     try {

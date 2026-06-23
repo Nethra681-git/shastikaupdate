@@ -1,13 +1,14 @@
 import { useNavigate } from "react-router-dom";
 import { useStore } from "@/lib/store";
 import { useTranslation } from "react-i18next";
-import { Package, Users, ShoppingCart, TrendingUp, MapPin, Truck, Badge, Trash2 } from "lucide-react";
+import { Package, Users, ShoppingCart, TrendingUp, MapPin, Truck, Badge, Trash2, Sprout } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
+import { PRODUCTS } from "@/assets/products";
 
 const Marketplace = () => {
   const { t } = useTranslation();
-  const { products, currentUser, addOrder, addNotification } = useStore();
+  const { products, currentUser, addOrder, addNotification, orders } = useStore();
   const navigate = useNavigate();
   const isAdmin = currentUser?.role === 'admin';
   const isFarmer = currentUser?.role === 'farmer';
@@ -22,6 +23,11 @@ const Marketplace = () => {
     if (!showExportInStockOnly) return true;
     return product.exportAvailable && product.quantity > 0;
   });
+
+  // Separate company products from farmer-added products
+  const defaultProductIds = new Set(PRODUCTS.map((p: any) => p.id));
+  const companyProducts = filteredProducts.filter(p => defaultProductIds.has(p.id));
+  const farmerProducts = filteredProducts.filter(p => !defaultProductIds.has(p.id));
 
   // Map product IDs to translation keys
   const productNameMap: Record<string, string> = {
@@ -118,8 +124,8 @@ const Marketplace = () => {
   const stats = {
     totalProducts: products.length,
     verifiedFarmers: new Set(products.map(p => p.farmerName)).size,
-    activeOrders: 248,
-    totalRevenue: `${(products.reduce((sum, p) => sum + (p.quantity * p.domesticPrice), 0) / 100000).toFixed(1)}L`,
+    activeOrders: orders.length,
+    totalRevenue: `${(orders.reduce((sum, o) => sum + o.total, 0) / 100000).toFixed(1)}L`,
   };
 
   const handleImageError = (productId: string) => {
@@ -440,31 +446,74 @@ const Marketplace = () => {
           </p>
         </div>
 
-        {/* Products Grid */}
-        {filteredProducts.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredProducts.map((p) => (
-              <ProductCard key={p.id} product={p} />
-            ))}
-          </div>
-        ) : (
-          /* Empty State */
-          <div className="flex flex-col items-center justify-center py-24 text-center">
-            <div className="text-7xl mb-6">📭</div>
-            <h2 className="text-3xl font-bold text-foreground mb-3">{t('no_products')}</h2>
-            <p className="text-muted-foreground text-lg mb-8 max-w-md">
-              {t('no_products_desc')}
-            </p>
-            {isAdmin && (
-              <button
-                onClick={() => navigate("/admin/add-product")}
-                className="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-xl font-bold shadow-[0_0_15px_rgba(34,197,94,0.3)] hover:shadow-[0_0_20px_rgba(34,197,94,0.5)] transform hover:-translate-y-1 transition-all flex items-center gap-2"
-              >
-                ➕ Add First Product
-              </button>
+        {/* Products Grid: Separate sections for Company and Farmer products */}
+        <>
+          {/* Our Products Section */}
+          <div className="mb-12">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="bg-gradient-to-br from-primary to-primary/70 p-3 rounded-xl">
+                <Package className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-foreground">🏢 {t('our_products') || 'Our Products'}</h2>
+                <p className="text-sm text-muted-foreground">{t('our_products_desc') || 'Company catalog products managed by Shastika'}</p>
+              </div>
+              <span className="ml-auto bg-primary/15 text-primary px-4 py-1.5 rounded-full text-sm font-bold">
+                {companyProducts.length} {t('products') || 'Products'}
+              </span>
+            </div>
+            {companyProducts.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {companyProducts.map((p) => (
+                  <ProductCard key={p.id} product={p} />
+                ))}
+              </div>
+            ) : (
+              <div className="premium-card rounded-2xl p-12 text-center">
+                <p className="text-lg text-muted-foreground">{t('no_company_products') || 'No company products available'}</p>
+              </div>
             )}
           </div>
-        )}
+
+          {/* Farmer Products Section */}
+          <div className="mb-8">
+            <div className="relative mb-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-primary/20"></div>
+              </div>
+              <div className="relative flex justify-center">
+                <span className="bg-background px-4 text-sm text-muted-foreground font-medium">
+                  👨‍🌾 {t('farmer_section') || 'Farmer Listings'}
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="bg-gradient-to-br from-amber-500 to-orange-500 p-3 rounded-xl">
+                <Sprout className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-foreground">🌾 {t('farmer_products') || 'Farmer Products'}</h2>
+                <p className="text-sm text-muted-foreground">{t('farmer_products_desc') || 'Products listed directly by farmers — review and manage'}</p>
+              </div>
+              <span className="ml-auto bg-amber-500/15 text-amber-500 px-4 py-1.5 rounded-full text-sm font-bold">
+                {farmerProducts.length} {t('products') || 'Products'}
+              </span>
+            </div>
+            {farmerProducts.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {farmerProducts.map((p) => (
+                  <ProductCard key={p.id} product={p} />
+                ))}
+              </div>
+            ) : (
+              <div className="premium-card rounded-2xl p-12 text-center border border-dashed border-amber-500/30">
+                <div className="text-5xl mb-4">🌱</div>
+                <p className="text-lg text-muted-foreground">{t('no_farmer_products') || 'No farmer products listed yet'}</p>
+                <p className="text-sm text-muted-foreground/70 mt-2">{t('no_farmer_products_desc') || 'Products added by farmers will appear here separately'}</p>
+              </div>
+            )}
+          </div>
+        </>
       </div>
 
       {/* Quantity Selection Modal */}

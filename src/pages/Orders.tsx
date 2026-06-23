@@ -1,13 +1,14 @@
 import { useStore } from '@/lib/store';
 import { useNavigate } from 'react-router-dom';
 import { generateInvoice } from '@/lib/invoice';
-import { Download, ShoppingCart, TrendingUp, CheckCircle, Clock } from 'lucide-react';
+import { Download, ShoppingCart, TrendingUp, CheckCircle, Clock, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 
 const Orders = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { currentUser, orders } = useStore();
+  const { currentUser, orders, deleteOrder } = useStore();
   const isAdmin = currentUser?.role === 'admin';
   const myOrders = isAdmin ? orders : orders.filter(o => o.buyerId === currentUser?.id);
 
@@ -120,12 +121,27 @@ const Orders = () => {
                 </div>
                 <div className="text-right">
                   <p className="text-3xl font-bold text-primary mb-3">₹{o.total.toLocaleString()}</p>
-                  <button 
-                    onClick={() => generateInvoice(o)} 
-                    className="btn-secondary py-2 px-4 text-sm flex items-center gap-2 whitespace-nowrap"
-                  >
-                    <Download className="w-4 h-4" /> {t('button_download_invoice')}
-                  </button>
+                  <div className="flex flex-col sm:flex-row gap-2 justify-end">
+                    <button 
+                      onClick={() => generateInvoice(o)} 
+                      className="btn-secondary py-2 px-4 text-sm flex items-center justify-center gap-2 whitespace-nowrap"
+                    >
+                      <Download className="w-4 h-4" /> {t('button_download_invoice')}
+                    </button>
+                    {!isAdmin && (
+                      <button 
+                        onClick={async () => {
+                          if (confirm(t('confirm_delete_order') || "Are you sure you want to delete this order?")) {
+                            await deleteOrder(o.id);
+                            toast.success(t('order_deleted') || "Order deleted successfully");
+                          }
+                        }}
+                        className="bg-red-500/10 text-red-600 hover:bg-red-500 hover:text-white py-2 px-4 rounded-lg font-semibold text-sm flex items-center justify-center gap-2 transition-all duration-300"
+                      >
+                        <Trash2 className="w-4 h-4" /> {t('delete') || "Delete"}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

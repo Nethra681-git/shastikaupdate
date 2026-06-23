@@ -130,7 +130,7 @@ const App = () => {
 
       // We merge firestore data over the default products, or just load them directly if they are entirely in firestore.
       // Assuming store.ts defaultProducts are the baseline:
-      import('@/lib/store').then(({ PRODUCTS }) => {
+      import('@/assets/products').then(({ PRODUCTS }) => {
         const mergedProducts = (PRODUCTS as unknown as Product[]).map(p => ({
           ...p,
           ...(firestoreProducts[p.id] || {})
