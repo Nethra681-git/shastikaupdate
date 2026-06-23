@@ -18,8 +18,8 @@ const ProductDetail = () => {
         <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition">
           <ChevronLeft className="w-4 h-4" /> Back to Marketplace
         </button>
-        <div className="glass-card rounded-xl overflow-hidden">
-          <div className="h-72 md:h-96 product-showcase overflow-hidden relative">
+        <div className="glass-card rounded-3xl overflow-hidden border border-white/10 shadow-2xl">
+          <div className="h-72 md:h-96 product-showcase overflow-hidden relative rounded-3xl bg-gradient-to-br from-primary/5 via-background to-secondary/5">
             {/* Animated Background — Floating Orbs */}
             <div className="showcase-orb showcase-orb-1" />
             <div className="showcase-orb showcase-orb-2" />

@@ -15,7 +15,13 @@ const Marketplace = () => {
   const [selectedQuantity, setSelectedQuantity] = useState<{ [key: string]: number }>({});
   const [showQuantityModal, setShowQuantityModal] = useState<string | null>(null);
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
+  const [showExportInStockOnly, setShowExportInStockOnly] = useState(false);
   const { deleteProduct, updateProductExportStatus } = useStore();
+
+  const filteredProducts = products.filter((product: any) => {
+    if (!showExportInStockOnly) return true;
+    return product.exportAvailable && product.quantity > 0;
+  });
 
   // Map product IDs to translation keys
   const productNameMap: Record<string, string> = {
@@ -400,10 +406,22 @@ const Marketplace = () => {
           </div>
         </div>
 
+        <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <button
+            onClick={() => setShowExportInStockOnly(prev => !prev)}
+            className={`px-5 py-3 rounded-full text-sm font-semibold transition ${showExportInStockOnly ? 'bg-primary text-white' : 'bg-white/10 text-muted-foreground hover:bg-white/20'}`}
+          >
+            {showExportInStockOnly ? t('show_all_products') : t('show_export_available_in_stock')}
+          </button>
+          <p className="text-sm text-muted-foreground">
+            {showExportInStockOnly ? t('export_in_stock_filter_active') : t('marketplace_filter_all_products')}
+          </p>
+        </div>
+
         {/* Products Grid */}
-        {products.length > 0 ? (
+        {filteredProducts.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {products.map((p) => (
+            {filteredProducts.map((p) => (
               <ProductCard key={p.id} product={p} />
             ))}
           </div>

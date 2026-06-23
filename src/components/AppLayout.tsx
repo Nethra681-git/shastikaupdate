@@ -47,10 +47,10 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
     : navItems;
 
   return (
-    <div className="flex w-full h-screen bg-background overflow-hidden">
+    <div className="flex w-full h-screen bg-background">
       {/* Sidebar - Premium dark green gradient */}
-      <aside className={`fixed left-0 top-0 h-[100vh] w-64 sidebar-gradient text-sidebar-foreground flex flex-col shrink-0 z-40 transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} shadow-2xl md:shadow-xl`}>
-        <div className="p-4 flex items-center justify-between border-b border-sidebar-border/30 backdrop-blur-sm shrink-0">
+      <aside className={`fixed left-0 top-0 h-screen w-64 sidebar-gradient text-sidebar-foreground flex flex-col shrink-0 z-40 transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} shadow-2xl md:shadow-xl`}>
+        <div className="p-5 flex items-center justify-between border-b border-sidebar-border/30 backdrop-blur-sm">
           <div className="flex items-center gap-2">
             <img src={logo} alt="Shastika Logo" className="h-6 w-6" />
             <div>
@@ -94,8 +94,8 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
       {/* Mobile overlay */}
       {sidebarOpen && <div onClick={() => setSidebarOpen(false)} className="fixed inset-0 bg-black/40 md:hidden z-30 backdrop-blur-sm" />}
       
-      <main className="flex flex-col w-full md:w-[calc(100%-16rem)] md:ml-64 h-[100vh] overflow-y-auto relative transition-all duration-300">
-        <header className="sticky top-0 z-30 h-16 border-b border-border/50 bg-card/95 backdrop-blur-sm flex items-center justify-between px-6 shrink-0 shadow-sm">
+      <main className="flex-1 flex flex-col w-full md:ml-64 overflow-y-auto">
+        <header className="sticky top-0 z-20 h-16 border-b border-border/50 bg-card/95 backdrop-blur-sm flex items-center justify-between px-6 shrink-0 shadow-sm">
           <div className="flex items-center gap-4 flex-1 min-w-0">
             <button onClick={() => setSidebarOpen(!sidebarOpen)} className="md:hidden p-2 hover:bg-muted rounded-lg transition">
               <Menu className="w-5 h-5 text-muted-foreground" />

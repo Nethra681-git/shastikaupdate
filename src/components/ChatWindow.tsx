@@ -95,7 +95,7 @@ export const ChatWindow = ({
   const online = isUserOnline(conversation.userId);
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full overflow-hidden rounded-3xl bg-[rgba(15,46,29,0.65)] border border-white/10 shadow-2xl">
       {/* Chat Header — Glassmorphism */}
       <div className="flex items-center justify-between px-6 py-4 chat-glass-header">
         <div className="flex items-center gap-3">
@@ -145,11 +145,11 @@ export const ChatWindow = ({
 
       {/* Messages Area — Glass Background */}
       <div
-        className="flex-1 overflow-y-auto px-6 py-4 space-y-3"
+        className="flex-1 overflow-y-auto px-6 py-5 space-y-3 bg-[radial-gradient(circle_at_top,rgba(34,197,94,0.08),transparent_36%),rgba(15,46,29,0.45)]"
         ref={messagesContainerRef as any}
         onScroll={handleScroll}
         style={{
-          background: "linear-gradient(180deg, rgba(15, 46, 29, 0.3) 0%, rgba(10, 35, 22, 0.5) 100%)",
+          backgroundBlendMode: 'overlay',
         }}
       >
         {loading ? (

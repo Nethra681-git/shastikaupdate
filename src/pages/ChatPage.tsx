@@ -388,41 +388,42 @@ export default function ChatPage() {
 
     try {
       const chatId = [currentUserId, selectedUser.id].sort().join("_");
+      const textMessage = messageText.trim();
 
-      // Upload attachments in parallel
+      if (textMessage) {
+        await addDoc(collection(db, "messages"), {
+          senderId: currentUserId,
+          senderName: currentUserName,
+          receiverId: selectedUser.id,
+          message: textMessage,
+          timestamp: serverTimestamp(),
+          participants: [currentUserId, selectedUser.id],
+        });
+      }
+
       if (pendingFiles.length > 0) {
         const uploads = await Promise.all(
           pendingFiles.map((pf) => uploadFile(pf.file, chatId))
         );
 
-        // Send one message per attachment
-        for (const attachment of uploads) {
-          await addDoc(collection(db, "messages"), {
-            senderId: currentUserId,
-            senderName: currentUserName,
-            receiverId: selectedUser.id,
-            message: messageText || "",
-            timestamp: serverTimestamp(),
-            participants: [currentUserId, selectedUser.id],
-            attachmentUrl: attachment.attachmentUrl,
-            attachmentType: attachment.attachmentType,
-            attachmentName: attachment.attachmentName,
-          });
-        }
+        await Promise.all(
+          uploads.map((attachment) =>
+            addDoc(collection(db, "messages"), {
+              senderId: currentUserId,
+              senderName: currentUserName,
+              receiverId: selectedUser.id,
+              message: textMessage && uploads.length === 1 ? textMessage : "",
+              timestamp: serverTimestamp(),
+              participants: [currentUserId, selectedUser.id],
+              attachmentUrl: attachment.attachmentUrl,
+              attachmentType: attachment.attachmentType,
+              attachmentName: attachment.attachmentName,
+            })
+          )
+        );
 
-        // Clean up previews
         pendingFiles.forEach((pf) => { if (pf.preview) URL.revokeObjectURL(pf.preview); });
         setPendingFiles([]);
-      } else {
-        // Text-only message
-        await addDoc(collection(db, "messages"), {
-          senderId: currentUserId,
-          senderName: currentUserName,
-          receiverId: selectedUser.id,
-          message: messageText,
-          timestamp: serverTimestamp(),
-          participants: [currentUserId, selectedUser.id],
-        });
       }
 
       setMessageText("");
@@ -656,12 +657,12 @@ export default function ChatPage() {
                 </div>
               )}
               <div className="flex items-center gap-3">
-                {/* Attachment Button */}
+                    {/* Attachment Button */}
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={pendingFiles.length >= MAX_FILES || sending}
-                  className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 hover:bg-primary/15 text-muted-foreground hover:text-primary disabled:opacity-30"
+                  className="flex-shrink-0 w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-200 hover:bg-primary/15 text-muted-foreground hover:text-primary disabled:opacity-30"
                   title={`Attach files (${pendingFiles.length}/${MAX_FILES})`}
                 >
                   <Paperclip className="w-5 h-5" />
@@ -676,12 +677,12 @@ export default function ChatPage() {
                 />
 
                 {/* Message Input */}
-                <div className="flex-1 chat-glass-input rounded-xl">
+                <div className="flex-1 chat-glass-input rounded-2xl">
                   <input
                     type="text"
                     value={messageText}
                     onChange={(e) => setMessageText(e.target.value)}
-                    placeholder="Type a message..."
+                    placeholder="Type a message or attach files..."
                     disabled={sending}
                     className="w-full px-4 py-2.5 bg-transparent border-none text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-0"
                   />
@@ -695,6 +696,9 @@ export default function ChatPage() {
                 >
                   <Send className="w-4 h-4" />
                 </button>
+              </div>
+              <div className="mt-3 text-xs text-muted-foreground/70">
+                Attach up to {MAX_FILES} files: images, PDF, DOC, DOCX.
               </div>
             </form>
           </>

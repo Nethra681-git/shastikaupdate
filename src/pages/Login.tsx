@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { signInWithCredential, GoogleAuthProvider, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithCredential, GoogleAuthProvider, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
 import { getDoc, doc, setDoc } from 'firebase/firestore';
 import { Eye, EyeOff, ChevronDown } from 'lucide-react';
 import { auth, db } from '@/lib/firebase';
@@ -168,6 +168,55 @@ const Login = () => {
       setGoogleLoading(true);
       setGoogleError('');
       sessionStorage.setItem('pendingGoogleRole', googleRoleSelected);
+      // If running locally, use Firebase web popup flow to avoid redirect_uri_mismatch
+      if (isLocalHost) {
+        const provider = new GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: 'select_account' });
+        const userCredential = await signInWithPopup(auth, provider);
+        const firebaseUser = userCredential.user;
+        const savedRole = (sessionStorage.getItem('pendingGoogleRole') || 'buyer') as UserRole;
+        sessionStorage.removeItem('pendingGoogleRole');
+
+        const userRef = doc(db, 'users', firebaseUser.uid);
+        const userSnap = await getDoc(userRef);
+
+        if (userSnap.exists()) {
+          const userData = userSnap.data();
+          setCurrentUser({
+            id: firebaseUser.uid,
+            name: userData.name || firebaseUser.displayName || firebaseUser.email?.split('@')[0] || '',
+            email: userData.email || firebaseUser.email || '',
+            phone: userData.phone || '',
+            country: userData.country || 'India',
+            role: userData.role || savedRole,
+            status: userData.status || 'pending',
+            userType: userData.userType || 'domestic',
+            verified: true,
+          });
+          navigate('/dashboard');
+        } else {
+          const newUserData = {
+            id: firebaseUser.uid,
+            name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || '',
+            email: firebaseUser.email || '',
+            phone: '',
+            country: 'India',
+            role: savedRole,
+            status: 'pending' as const,
+            userType: 'domestic' as const,
+            verified: true,
+            createdAt: new Date().toISOString(),
+          };
+          await setDoc(doc(db, 'users', firebaseUser.uid), newUserData);
+          addUser(newUserData);
+          setCurrentUser(newUserData);
+          navigate('/dashboard');
+        }
+        setGoogleLoading(false);
+        return;
+      }
+
+      // Native plugin flow for non-local environments
       console.log('STARTING GOOGLE LOGIN');
 
       const result = await GoogleSignIn.signIn();
@@ -241,6 +290,27 @@ const Login = () => {
     };
     initializeGoogleSignIn();
   }, []);
+
+  // Local dev bypass for Google OAuth redirect_uri_mismatch debugging
+  const isLocalHost = typeof window !== 'undefined' && (
+    window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === '[::1]'
+  );
+
+  const handleLocalTest = (roleTest: UserRole) => {
+    setCurrentUser({
+      id: `test-${roleTest}`,
+      name: roleTest === 'farmer' ? 'Test Farmer' : 'Test Buyer',
+      email: `${roleTest}@local.test`,
+      phone: '',
+      country: 'Local',
+      role: roleTest,
+      status: 'approved',
+      userType: 'domestic',
+      verified: true
+    });
+    // navigate to dashboard — role-specific UI should handle role gating
+    navigate('/dashboard');
+  };
 
   const inputStyle = {
     boxShadow: '0 0 20px rgba(34, 197, 94, 0)',
@@ -415,6 +485,23 @@ const Login = () => {
               style={{ background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--secondary)))', boxShadow: '0 0 30px rgba(34, 197, 94, 0.3)', textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
               {t('signIn')}
             </button>
+
+            {isLocalHost && (
+              <div className="mt-4 flex gap-3">
+                <button
+                  onClick={() => handleLocalTest('farmer')}
+                  className="flex-1 py-2.5 rounded-xl font-semibold text-foreground border-2 border-green-700/40 bg-green-900/10 hover:bg-green-900/20 transition"
+                >
+                  Test as Farmer
+                </button>
+                <button
+                  onClick={() => handleLocalTest('buyer')}
+                  className="flex-1 py-2.5 rounded-xl font-semibold text-foreground border-2 border-blue-700/30 bg-blue-900/10 hover:bg-blue-900/20 transition"
+                >
+                  Test as Buyer
+                </button>
+              </div>
+            )}
 
             {googleError && (
               <div className="bg-destructive/20 border border-destructive/40 text-secondary rounded-xl p-4 text-sm font-medium text-center">

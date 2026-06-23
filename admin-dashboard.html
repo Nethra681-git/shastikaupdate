@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Shastika Marketplace Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              primary: '#10b981',
+              'primary-dark': '#059669',
+              'primary-deep': '#047857',
+              darkbg: '#064e3b',
+              accent: '#3b82f6',
+              alert: '#ef4444'
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    </style>
+  </head>
+  <body class="min-h-screen bg-darkbg text-white font-sans">
+    <div id="app" class="flex">
+      <!-- Sidebar -->
+      <aside id="sidebar" class="flex flex-col bg-gradient-to-b from-green-900 to-[color:var(--tw-color-darker)] text-green-100 w-64 transition-all duration-300 ease-in-out overflow-hidden" style="--tw-color-darker:#022b1f">
+        <div class="flex items-center justify-between px-4 h-16 bg-gradient-to-r from-green-800 to-green-700">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded bg-green-700 flex items-center justify-center">S</div>
+            <div class="text-sm font-bold">Shastika</div>
+          </div>
+          <button id="collapseBtn" class="p-2 rounded hover:bg-green-800/30">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+          </button>
+        </div>
+        <nav class="flex-1 px-2 py-4 space-y-1">
+          <a href="#" class="flex items-center gap-3 px-3 py-2 rounded bg-green-700 text-white"><span class="text-xl">🏠</span><span class="font-semibold">Dashboard</span></a>
+          <a href="#" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-green-800/40"><span class="text-xl">🛒</span><span>Marketplace</span></a>
+          <a href="#" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-green-800/40"><span class="text-xl">📦</span><span>Orders</span></a>
+          <a href="#" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-green-800/40"><span class="text-xl">📝</span><span>RFQ</span></a>
+          <a href="#" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-green-800/40"><span class="text-xl">💳</span><span>Payment</span></a>
+          <a href="#" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-green-800/40"><span class="text-xl">🚚</span><span>Shipment</span></a>
+          <a href="#" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-green-800/40"><span class="text-xl">💬</span><span>Chat</span></a>
+          <a href="#" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-green-800/40"><span class="text-xl">🛠️</span><span>Support</span></a>
+        </nav>
+        <div class="p-4 border-t border-green-700">
+          <div class="flex items-center gap-3"><div class="w-10 h-10 rounded-full bg-green-600 flex items-center justify-center">👩‍🌾</div><div><div class="text-sm font-semibold">Admin</div><div class="text-xs text-green-200">admin@shastika</div></div></div>
+          <button class="mt-3 w-full px-3 py-2 bg-transparent border border-green-700 rounded text-green-200 hover:bg-green-800/40">Logout</button>
+        </div>
+      </aside>
+
+      <div class="flex-1 min-h-screen flex flex-col">
+        <header class="px-6 py-6 bg-gradient-to-r from-green-800 to-green-700">
+          <div class="flex items-start justify-between gap-4">
+            <div><h1 class="text-2xl font-bold">Shastika GLOBAL - IMPEX PVT LTD</h1><p class="text-green-100/80">Best quality products at competitive prices, reliable delivery.</p></div>
+            <div class="flex items-center gap-3">
+              <div class="relative">
+                <button id="langBtn" class="px-3 py-2 bg-white/10 rounded text-white">English ▾</button>
+                <div id="langMenu" class="hidden absolute right-0 mt-2 w-40 bg-white/5 rounded shadow-lg"><button class="w-full text-left px-3 py-2 hover:bg-white/10">English</button><button class="w-full text-left px-3 py-2 hover:bg-white/10">हिन्दी</button></div>
+              </div>
+              <button class="p-2 rounded bg-white/5 hover:bg-white/10">🔔</button>
+            </div>
+          </div>
+        </header>
+
+        <main class="p-6">
+          <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div id="statProducts" class="relative rounded-lg p-4 bg-gradient-to-br from-green-800 to-green-900 border border-green-700 hover:border-green-500 transition-shadow shadow-sm"><div class="text-sm text-green-200">Total Products</div><div id="totalProducts" class="text-3xl font-bold mt-2">0</div><div class="absolute right-4 top-4 w-10 h-10 rounded-full bg-green-700 flex items-center justify-center">📦</div></div>
+            <div id="statFarmers" class="relative rounded-lg p-4 bg-gradient-to-br from-green-800 to-green-900 border border-green-700 hover:border-green-500 transition-shadow shadow-sm"><div class="text-sm text-green-200">Verified Farmers</div><div id="verifiedFarmers" class="text-3xl font-bold mt-2">0</div><div class="absolute right-4 top-4 w-10 h-10 rounded-full bg-green-700 flex items-center justify-center">👨‍🌾</div></div>
+            <div id="statOrders" class="relative rounded-lg p-4 bg-gradient-to-br from-blue-600 to-blue-700 border border-blue-500 hover:border-blue-400 transition-shadow shadow-sm"><div class="text-sm text-blue-100">Active Orders</div><div id="activeOrders" class="text-3xl font-bold mt-2">0</div><div class="absolute right-4 top-4 w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center">🛒</div></div>
+            <div id="statRevenue" class="relative rounded-lg p-4 bg-gradient-to-br from-green-800 to-green-900 border border-green-700 hover:border-green-500 transition-shadow shadow-sm"><div class="text-sm text-green-200">Total Revenue</div><div id="totalRevenue" class="text-3xl font-bold mt-2">0.0L</div><div class="absolute right-4 top-4 w-10 h-10 rounded-full bg-green-700 flex items-center justify-center">📈</div></div>
+          </section>
+
+          <section>
+            <div class="flex items-center justify-between mb-4"><h2 class="text-lg font-bold">Products</h2><div id="showing" class="text-sm text-green-200">Showing 0</div></div>
+            <div id="productsGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div>
+
+            <template id="productTemplate">
+              <article class="bg-green-800/30 rounded-lg overflow-hidden border border-green-700 hover:border-green-500 transition-shadow shadow-sm">
+                <div class="relative p-4 h-40 flex items-center justify-center bg-gradient-to-b from-green-850 to-green-800">
+                  <div class="badges absolute left-4 top-4 flex gap-2"></div>
+                  <div class="emoji text-6xl"></div>
+                  <div class="actions absolute right-3 top-3 flex flex-col gap-2"></div>
+                </div>
+                <div class="p-4">
+                  <div class="flex items-center justify-between gap-2 mb-2"><div class="category text-xs px-2 py-1 rounded bg-green-700 text-green-100"></div><div class="verified text-xs text-green-300"></div></div>
+                  <h3 class="title font-bold text-white"></h3>
+                  <p class="desc text-green-100 text-sm line-clamp-2 mt-1"></p>
+                  <div class="mt-4 flex items-center justify-between"><div class="price text-green-300 font-semibold"></div><button class="addCart px-3 py-1 bg-primary hover:bg-primary-dark rounded">Add to Cart</button></div>
+                </div>
+              </article>
+            </template>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <script>
+      // Sample data
+      const sampleProducts = [
+        {id:1,emoji:'🍌',category:'Bananas',verified:true,title:'Organic Cavendish Banana',desc:'Premium, fully ripened bananas ready for export. Grown with sustainable practices and handpicked.',price:120,unit:'₹ 120 / kg',stock:true,export:true},
+        {id:2,emoji:'🍎',category:'Apples',verified:true,title:'Fresh Red Apple',desc:'Crisp apples grown in cool highlands. Limited stock available.',price:160,unit:'₹ 160 / kg',stock:false,export:true},
+        {id:3,emoji:'🌽',category:'Corn',verified:true,title:'Sweet Yellow Corn',desc:'High-sugar corn suitable for fresh markets and processing.',price:90,unit:'₹ 90 / kg',stock:true,export:false},
+        {id:4,emoji:'🥥',category:'Coconuts',verified:true,title:'Mature Coconut',desc:'Ideal for oil extraction and fresh consumption.',price:80,unit:'₹ 80 / pc',stock:true,export:true}
+      ];
+
+      // Render functions
+      function renderStats(products){
+        document.getElementById('totalProducts').textContent = products.length;
+        document.getElementById('verifiedFarmers').textContent = 0;
+        document.getElementById('activeOrders').textContent = 2;
+        const revenue = 0.0;
+        document.getElementById('totalRevenue').textContent = revenue + 'L';
+        document.getElementById('showing').textContent = `Showing ${products.length}`;
+      }
+
+      function createBadge(text, cls){ const s = document.createElement('span'); s.className = `px-2 py-1 text-xs rounded ${cls}`; s.textContent = text; return s }
+
+      function createAction(icon, color, onClick){ const b = document.createElement('button'); b.className = `w-9 h-9 rounded ${color} flex items-center justify-center`; b.textContent = icon; b.addEventListener('click', onClick); return b }
+
+      function renderProducts(products){
+        const grid = document.getElementById('productsGrid'); grid.innerHTML='';
+        const tpl = document.getElementById('productTemplate');
+        products.forEach(p => {
+          const node = tpl.content.cloneNode(true);
+          node.querySelector('.emoji').textContent = p.emoji;
+          const badges = node.querySelector('.badges');
+          badges.appendChild(createBadge(p.stock? '✓ In Stock' : '✗ Out of Stock', p.stock? 'bg-green-600' : 'bg-red-600'));
+          if(p.export) badges.appendChild(createBadge('Export Available', 'bg-blue-500'));
+          node.querySelector('.category').textContent = p.category;
+          node.querySelector('.verified').textContent = p.verified? 'Verified ✓' : '';
+          node.querySelector('.title').textContent = p.title;
+          node.querySelector('.desc').textContent = p.desc;
+          node.querySelector('.price').textContent = p.unit;
+          const actions = node.querySelector('.actions');
+          actions.appendChild(createAction('📋','bg-blue-500', ()=>{ navigator.clipboard?.writeText(JSON.stringify(p)).then(()=>alert('Copied')) }))
+          actions.appendChild(createAction('✏️','bg-green-600', ()=>{ editProduct(p.id) }))
+          actions.appendChild(createAction('🗑️','bg-red-500', ()=>{ deleteProduct(p.id) }))
+          node.querySelector('.addCart').addEventListener('click', ()=>alert(`Added ${p.title}`));
+          grid.appendChild(node);
+        })
+      }
+
+      function editProduct(id){ const p = sampleProducts.find(x=>x.id===id); const newTitle = prompt('Edit title', p.title); if(newTitle){ p.title=newTitle; renderProducts(sampleProducts); renderStats(sampleProducts) } }
+      function deleteProduct(id){ if(!confirm('Delete product?')) return; const idx = sampleProducts.findIndex(x=>x.id===id); if(idx>-1) sampleProducts.splice(idx,1); renderProducts(sampleProducts); renderStats(sampleProducts) }
+
+      // Sidebar collapse
+      const sidebar = document.getElementById('sidebar'); const collapseBtn = document.getElementById('collapseBtn');
+      collapseBtn.addEventListener('click', ()=>{ if(sidebar.classList.contains('w-64')){ sidebar.classList.remove('w-64'); sidebar.classList.add('w-16'); sidebar.querySelectorAll('nav a span:nth-child(2), nav a span:nth-child(3)').forEach(el=>el.style.display='none'); sidebar.querySelectorAll('aside > div:first-child .text-sm').forEach(el=>el.style.display='none') } else { sidebar.classList.remove('w-16'); sidebar.classList.add('w-64'); sidebar.querySelectorAll('nav a span:nth-child(2), nav a span:nth-child(3)').forEach(el=>el.style.display=''); sidebar.querySelectorAll('aside > div:first-child .text-sm').forEach(el=>el.style.display='') } })
+
+      // Language menu
+      const langBtn = document.getElementById('langBtn'); const langMenu = document.getElementById('langMenu'); langBtn.addEventListener('click', e=>{ e.stopPropagation(); langMenu.classList.toggle('hidden') }); document.addEventListener('click', ()=>langMenu.classList.add('hidden'))
+
+      // Init
+      renderProducts(sampleProducts);
+      renderStats(sampleProducts);
+    </script>
+  </body>
+</html>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Shastika Marketplace Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              primary: '#10b981',
+              'primary-dark': '#059669',
+              'primary-deep': '#047857',
+              darkbg: '#064e3b',
+              accent: '#3b82f6',
+              alert: '#ef4444'
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    </style>
+  </head>
+  <body class="min-h-screen bg-darkbg text-white font-sans">
+    <div id="app" class="flex">
+      <!-- Sidebar -->
+      <aside id="sidebar" class="flex flex-col bg-gradient-to-b from-green-900 to-[color:var(--tw-color-darker)] text-green-100 w-64 transition-all duration-300 ease-in-out overflow-hidden" style="--tw-color-darker:#022b1f">
+        <div class="flex items-center justify-between px-4 h-16 bg-gradient-to-r from-green-800 to-green-700">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded bg-green-700 flex items-center justify-center">S</div>
+            <div class="text-sm font-bold">Shastika</div>
+          </div>
+          <button id="collapseBtn" class="p-2 rounded hover:bg-green-800/30">
+            <svg id="burger" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+          </button>
+        </div>
+
+        <nav class="flex-1 px-2 py-4 space-y-1">
+          <a href="#" class="flex items-center gap-3 px-3 py-2 rounded bg-green-700 text-white">
+            <span class="text-xl">🏠</span>
+            <span class="font-semibold">Dashboard</span>
+          </a>
+          <a href="#" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-green-800/40"><span class="text-xl">🛒</span><span>Marketplace</span></a>
+          <a href="#" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-green-800/40"><span class="text-xl">📦</span><span>Orders</span></a>
+          <a href="#" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-green-800/40"><span class="text-xl">📝</span><span>RFQ</span></a>
+          <a href="#" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-green-800/40"><span class="text-xl">💳</span><span>Payment</span></a>
+          <a href="#" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-green-800/40"><span class="text-xl">🚚</span><span>Shipment</span></a>
+          <a href="#" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-green-800/40"><span class="text-xl">💬</span><span>Chat</span></a>
+          <a href="#" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-green-800/40"><span class="text-xl">🛠️</span><span>Support</span></a>
+        </nav>
+
+        <div class="p-4 border-t border-green-700">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-green-600 flex items-center justify-center">👩‍🌾</div>
+            <div><div class="text-sm font-semibold">Admin</div><div class="text-xs text-green-200">admin@shastika</div></div>
+          </div>
+          <button class="mt-3 w-full px-3 py-2 bg-transparent border border-green-700 rounded text-green-200 hover:bg-green-800/40">Logout</button>
+        </div>
+      </aside>
+
+      <!-- Main content -->
+      <div class="flex-1 min-h-screen flex flex-col">
+        <header class="px-6 py-6 bg-gradient-to-r from-green-800 to-green-700">
+          <div class="flex items-start justify-between gap-4">
+            <div><h1 class="text-2xl font-bold">Shastika GLOBAL - IMPEX PVT LTD</h1><p class="text-green-100/80">Best quality products at competitive prices, reliable delivery.</p></div>
+            <div class="flex items-center gap-3">
+              <div class="relative">
+                <button id="langBtn" class="px-3 py-2 bg-white/10 rounded text-white">English ▾</button>
+                <div id="langMenu" class="hidden absolute right-0 mt-2 w-40 bg-white/5 rounded shadow-lg"><button class="w-full text-left px-3 py-2 hover:bg-white/10">English</button><button class="w-full text-left px-3 py-2 hover:bg-white/10">हिन्दी</button></div>
+              </div>
+              <button class="p-2 rounded bg-white/5 hover:bg-white/10">🔔</button>
+            </div>
+          </div>
+        </header>
+
+        <main class="p-6">
+          <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div id="statProducts" class="relative rounded-lg p-4 bg-gradient-to-br from-green-800 to-green-900 border border-green-700 hover:border-green-500 transition-shadow shadow-sm">
+              <div class="text-sm text-green-200">Total Products</div>
+              <div id="totalProducts" class="text-3xl font-bold mt-2">0</div>
+              <div class="absolute right-4 top-4 w-10 h-10 rounded-full bg-green-700 flex items-center justify-center">📦</div>
+            </div>
+            <div id="statFarmers" class="relative rounded-lg p-4 bg-gradient-to-br from-green-800 to-green-900 border border-green-700 hover:border-green-500 transition-shadow shadow-sm">
+              <div class="text-sm text-green-200">Verified Farmers</div>
+              <div id="verifiedFarmers" class="text-3xl font-bold mt-2">0</div>
+              <div class="absolute right-4 top-4 w-10 h-10 rounded-full bg-green-700 flex items-center justify-center">👨‍🌾</div>
+            </div>
+            <div id="statOrders" class="relative rounded-lg p-4 bg-gradient-to-br from-blue-600 to-blue-700 border border-blue-500 hover:border-blue-400 transition-shadow shadow-sm">
+              <div class="text-sm text-blue-100">Active Orders</div>
+              <div id="activeOrders" class="text-3xl font-bold mt-2">0</div>
+              <div class="absolute right-4 top-4 w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center">🛒</div>
+            </div>
+            <div id="statRevenue" class="relative rounded-lg p-4 bg-gradient-to-br from-green-800 to-green-900 border border-green-700 hover:border-green-500 transition-shadow shadow-sm">
+              <div class="text-sm text-green-200">Total Revenue</div>
+              <div id="totalRevenue" class="text-3xl font-bold mt-2">0.0L</div>
+              <div class="absolute right-4 top-4 w-10 h-10 rounded-full bg-green-700 flex items-center justify-center">📈</div>
+            </div>
+          </section>
+
+          <section>
+            <div class="flex items-center justify-between mb-4"><h2 class="text-lg font-bold">Products</h2><div id="showing" class="text-sm text-green-200">Showing 0</div></div>
+
+            <div id="productsGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div>
+            <template id="productTemplate">
+              <article class="bg-green-800/30 rounded-lg overflow-hidden border border-green-700 hover:border-green-500 transition-shadow shadow-sm">
+                <div class="relative p-4 h-40 flex items-center justify-center bg-gradient-to-b from-green-850 to-green-800">
+                  <div class="badges absolute left-4 top-4 flex gap-2"></div>
+                  <div class="emoji text-6xl"></div>
+                  <div class="actions absolute right-3 top-3 flex flex-col gap-2"></div>
+                </div>
+                <div class="p-4">
+                  <div class="flex items-center justify-between gap-2 mb-2"><div class="category text-xs px-2 py-1 rounded bg-green-700 text-green-100"></div><div class="verified text-xs text-green-300"></div></div>
+                  <h3 class="title font-bold text-white"></h3>
+                  <p class="desc text-green-100 text-sm line-clamp-2 mt-1"></p>
+                  <div class="mt-4 flex items-center justify-between"><div class="price text-green-300 font-semibold"></div><button class="addCart px-3 py-1 bg-primary hover:bg-primary-dark rounded">Add to Cart</button></div>
+                </div>
+              </article>
+            </template>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <script>
+      // Sample data
+      const products = [
+        { id: 1, name: 'Organic Cavendish Banana', emoji: '🍌', category: 'Bananas', verified: true, desc: 'Premium, fully ripened bananas ready for export. Grown with sustainable practices and handpicked.', price: 120, unit: 'kg', inStock: true, exportAvailable: true },
+        { id: 2, name: 'Fresh Red Apple', emoji: '🍎', category: 'Apples', verified: true, desc: 'Crisp apples grown in cool highlands. Limited stock available.', price: 160, unit: 'kg', inStock: false, exportAvailable: true },
+        { id: 3, name: 'Sweet Yellow Corn', emoji: '🌽', category: 'Corn', verified: true, desc: 'High-sugar corn suitable for fresh markets and processing.', price: 90, unit: 'kg', inStock: true, exportAvailable: false },
+        { id: 4, name: 'Mature Coconut', emoji: '🥥', category: 'Coconuts', verified: true, desc: 'Ideal for oil extraction and fresh consumption.', price: 80, unit: 'pc', inStock: true, exportAvailable: true }
+      ]
+
+      // State
+      let activeOrders = 2
+      let totalRevenue = 0
+
+      // DOM refs
+      const productsGrid = document.getElementById('productsGrid')
+      const template = document.getElementById('productTemplate')
+      const totalProductsEl = document.getElementById('totalProducts')
+      const verifiedFarmersEl = document.getElementById('verifiedFarmers')
+      const activeOrdersEl = document.getElementById('activeOrders')
+      const totalRevenueEl = document.getElementById('totalRevenue')
+      const showingEl = document.getElementById('showing')
+
+      function formatPrice(n) { return `₹ ${n} / ` }
+
+      function renderStats() {
+        totalProductsEl.textContent = products.length
+        verifiedFarmersEl.textContent = 0
+        activeOrdersEl.textContent = activeOrders
+        // show as L if >=100000
+        if (totalRevenue >= 100000) {
+          totalRevenueEl.textContent = (totalRevenue/100000).toFixed(1) + 'L'
+        } else {
+          totalRevenueEl.textContent = '0.0L'
+        }
+        showingEl.textContent = `Showing ${products.length} of ${products.length}`
+      }
+
+      function clearChildren(el) { while (el.firstChild) el.removeChild(el.firstChild) }
+
+      function renderProducts() {
+        clearChildren(productsGrid)
+        products.forEach(p => {
+          const node = template.content.cloneNode(true)
+          const article = node.querySelector('article')
+          node.querySelector('.emoji').textContent = p.emoji
+          const badges = node.querySelector('.badges')
+          if (p.inStock) {
+            const b = document.createElement('span'); b.className='px-2 py-1 text-xs rounded bg-green-600'; b.textContent='✓ In Stock'; badges.appendChild(b)
+          } else {
+            const b = document.createElement('span'); b.className='px-2 py-1 text-xs rounded bg-red-600'; b.textContent='✗ Out of Stock'; badges.appendChild(b)
+          }
+          if (p.exportAvailable) {
+            const e = document.createElement('span'); e.className='px-2 py-1 text-xs rounded bg-blue-500'; e.textContent='Export Available'; badges.appendChild(e)
+          }
+          node.querySelector('.category').textContent = p.category
+          node.querySelector('.verified').textContent = p.verified ? 'Verified ✓' : ''
+          node.querySelector('.title').textContent = p.name
+          node.querySelector('.desc').textContent = p.desc
+          node.querySelector('.price').textContent = `₹ ${p.price} / ${p.unit}`
+
+          const actions = node.querySelector('.actions')
+          const copyBtn = document.createElement('button'); copyBtn.className='w-9 h-9 rounded bg-blue-500 flex items-center justify-center'; copyBtn.textContent='📋'; copyBtn.title='Copy';
+          copyBtn.addEventListener('click', () => handleCopy(p))
+          const editBtn = document.createElement('button'); editBtn.className='w-9 h-9 rounded bg-green-600 flex items-center justify-center'; editBtn.textContent='✏️'; editBtn.title='Edit';
+          editBtn.addEventListener('click', () => handleEdit(p))
+          const delBtn = document.createElement('button'); delBtn.className='w-9 h-9 rounded bg-red-500 flex items-center justify-center'; delBtn.textContent='🗑️'; delBtn.title='Delete';
+          delBtn.addEventListener('click', () => handleDelete(p))
+          actions.appendChild(copyBtn); actions.appendChild(editBtn); actions.appendChild(delBtn)
+
+          const addCart = node.querySelector('.addCart')
+          addCart.addEventListener('click', () => handleAddToCart(p))
+
+          productsGrid.appendChild(node)
+        })
+      }
+
+      function handleCopy(p) {
+        const text = `${p.name} - ${p.category} - ₹${p.price}/${p.unit}`
+        navigator.clipboard?.writeText(text).then(()=>alert('Copied to clipboard'))
+      }
+
+      function handleEdit(p) {
+        const newName = prompt('Edit product name', p.name)
+        if (newName) { p.name = newName; renderProducts(); renderStats() }
+      }
+
+      function handleDelete(p) {
+        if (!confirm('Delete this product?')) return
+        const idx = products.findIndex(x=>x.id===p.id)
+        if (idx>-1) { products.splice(idx,1); renderProducts(); renderStats() }
+      }
+
+      function handleAddToCart(p) {
+        activeOrders += 1
+        totalRevenue += p.price * (p.unit==='kg' ? 1 : 1)
+        renderStats()
+        alert(`${p.name} added to cart`)
+      }
+
+      // Sidebar collapse
+      const sidebar = document.getElementById('sidebar')
+      const collapseBtn = document.getElementById('collapseBtn')
+      collapseBtn.addEventListener('click', () => {
+        if (sidebar.classList.contains('w-64')) {
+          sidebar.classList.remove('w-64')
+          sidebar.classList.add('w-16')
+          sidebar.querySelectorAll('nav a span:nth-child(2), nav a span:nth-child(3)').forEach(el => el.style.display = 'none')
+          sidebar.querySelectorAll('aside > div:first-child .text-sm').forEach(el => el.style.display = 'none')
+        } else {
+          sidebar.classList.remove('w-16')
+          sidebar.classList.add('w-64')
+          sidebar.querySelectorAll('nav a span:nth-child(2), nav a span:nth-child(3)').forEach(el => el.style.display = '')
+          sidebar.querySelectorAll('aside > div:first-child .text-sm').forEach(el => el.style.display = '')
+        }
+      })
+
+      // Language menu
+      const langBtn = document.getElementById('langBtn')
+      const langMenu = document.getElementById('langMenu')
+      langBtn.addEventListener('click', (e) => { e.stopPropagation(); langMenu.classList.toggle('hidden') })
+      document.addEventListener('click', () => langMenu.classList.add('hidden'))
+
+      // Init
+      renderProducts()
+      renderStats()
+    </script>
+  </body>
+</html>

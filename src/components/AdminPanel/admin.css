@@ -1,0 +1,48 @@
+@layer components {
+  /* Glass morphism card effect */
+  .glass-card {
+    @apply backdrop-blur-xl bg-slate-900/40;
+  }
+
+  /* Fade in animation */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
+  }
+
+  /* Pulse animation for status updates */
+  @keyframes pulse-soft {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+
+  .animate-pulse-soft {
+    animation: pulse-soft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  /* Smooth transitions */
+  .transition-all {
+    @apply transition-all duration-300 ease-in-out;
+  }
+}
+
+/* Light theme support (if needed) */
+@media (prefers-color-scheme: light) {
+  .glass-card {
+    @apply bg-white/40;
+  }
+}

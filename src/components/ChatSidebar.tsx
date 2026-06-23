@@ -37,7 +37,7 @@ export const ChatSidebar = ({
   };
 
   return (
-    <div className="flex flex-col h-full chat-glass-panel">
+    <div className="flex flex-col h-full chat-glass-panel shadow-2xl border border-white/10">
       {/* Header — Glassmorphism */}
       <div className="p-5 chat-glass-header">
         <h2 className="text-lg font-bold text-foreground mb-4">Messages</h2>

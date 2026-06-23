@@ -8,12 +8,17 @@ const FarmerDashboard = () => {
   const { currentUser, products, orders, updateOrderFarmerStatus, updateProductStock, addNotification } = useStore();
   const [stockEditing, setStockEditing] = useState<string | null>(null);
   const [newStock, setNewStock] = useState(0);
+  const [showExportInStockOnly, setShowExportInStockOnly] = useState(false);
 
   const farmerOrders = orders.filter(o =>
     products.some(p => p.id === o.productId && p.farmerName === currentUser?.name)
   );
 
   const farmerProducts = products.filter(p => p.farmerName === currentUser?.name);
+  const filteredFarmerProducts = farmerProducts.filter(p => {
+    if (!showExportInStockOnly) return true;
+    return p.exportAvailable && p.quantity > 0;
+  });
 
   const handleAccept = (orderId: string, productName: string, buyerName: string) => {
     updateOrderFarmerStatus(orderId, 'accepted');
@@ -74,14 +79,24 @@ const FarmerDashboard = () => {
       <p className="text-muted-foreground">{t('farmer_description')}</p>
 
       <div>
-        <h2 className="text-lg font-semibold text-foreground mb-3">{t('farmer_my_products')}</h2>
-        {farmerProducts.length === 0 ? (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-3">
+          <h2 className="text-lg font-semibold text-foreground">{t('farmer_my_products')}</h2>
+          <button
+            onClick={() => setShowExportInStockOnly(prev => !prev)}
+            className={`px-4 py-2 rounded-full text-sm font-semibold transition ${showExportInStockOnly ? 'bg-primary text-white' : 'bg-white/10 text-muted-foreground hover:bg-white/20'}`}
+          >
+            {showExportInStockOnly ? t('show_all_products') : t('show_export_available_in_stock')}
+          </button>
+        </div>
+        {filteredFarmerProducts.length === 0 ? (
           <div className="glass-card rounded-xl p-6 text-center">
-            <p className="text-muted-foreground">{t('farmer_no_products')}</p>
+            <p className="text-muted-foreground">
+              {showExportInStockOnly ? t('farmer_no_export_in_stock') : t('farmer_no_products')}
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {farmerProducts.map(p => (
+            {filteredFarmerProducts.map(p => (
               <div key={p.id} className="glass-card rounded-xl p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
