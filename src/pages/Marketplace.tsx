@@ -16,7 +16,7 @@ const Marketplace = () => {
   const [showQuantityModal, setShowQuantityModal] = useState<string | null>(null);
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
   const [showExportInStockOnly, setShowExportInStockOnly] = useState(false);
-  const { deleteProduct, updateProductExportStatus } = useStore();
+  const { deleteProduct, updateProductExportStatus, updateProductGrade, updateProductStock } = useStore();
 
   const filteredProducts = products.filter((product: any) => {
     if (!showExportInStockOnly) return true;
@@ -238,16 +238,17 @@ const Marketplace = () => {
             />
           )}
           
-          {/* Stock Badge */}
-          <div className="absolute top-3 left-3 flex gap-2">
-            {product.quantity > 10000 && (
-              <div className="bg-green-500/90 backdrop-blur-sm text-white px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1">
-                <Badge className="w-3 h-3" /> {t('in_stock')}
+          {/* Stock Badges */}
+          <div className="absolute top-3 left-3 flex flex-col items-start gap-1.5 z-10 pointer-events-none">
+            {product.quantity > 0 && (
+              <div className="bg-black/60 backdrop-blur-md border border-white/10 text-green-400 px-2.5 py-1 rounded-lg text-[10px] font-bold tracking-widest uppercase shadow-xl flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse shadow-[0_0_5px_rgba(74,222,128,0.8)]"></span>
+                {t('in_stock') || 'IN STOCK'}
               </div>
             )}
             {product.exportAvailable && (
-              <div className="bg-blue-500/90 backdrop-blur-sm text-white px-3 py-1 rounded-full text-xs font-semibold">
-                🌍 {t('export_available')}
+              <div className="bg-black/60 backdrop-blur-md border border-white/10 text-blue-400 px-2.5 py-1 rounded-lg text-[10px] font-bold tracking-widest uppercase shadow-xl flex items-center gap-1.5">
+                🌍 {t('export_available') || 'EXPORT'}
               </div>
             )}
           </div>
@@ -286,30 +287,51 @@ const Marketplace = () => {
             </p>
           </div>
 
-          {/* Export Available Toggle (Admin/Farmer only) */}
+          {/* Admin / Farmer Management Options */}
           {(isAdmin || (isFarmer && product.farmerName === currentUser?.name)) && (
-            <div className="flex items-center justify-between mt-1 mb-1 p-3 bg-primary/5 rounded-lg border border-primary/10 hover:bg-primary/10 transition-colors">
-              <span className="text-sm font-semibold text-foreground">Export Available</span>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input 
-                  type="checkbox" 
-                  className="sr-only peer"
-                  checked={product.exportAvailable}
-                  onChange={async (e) => {
-                    e.stopPropagation();
-                    await updateProductExportStatus(product.id, e.target.checked);
-                    toast.success("Export status updated");
-                  }}
-                />
-                <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
-              </label>
+            <div className="flex flex-col gap-3 mt-3 mb-2 pt-3 border-t border-primary/10">
+              {/* Export Available Toggle */}
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-muted-foreground">Export Available</span>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    className="sr-only peer"
+                    checked={product.exportAvailable}
+                    onChange={async (e) => {
+                      e.stopPropagation();
+                      await updateProductExportStatus(product.id, e.target.checked);
+                      toast.success("Export status updated");
+                    }}
+                  />
+                  <div className="w-11 h-6 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary shadow-sm"></div>
+                </label>
+              </div>
+
+              {/* In Stock Toggle */}
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-muted-foreground">In Stock</span>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    className="sr-only peer"
+                    checked={product.quantity > 0}
+                    onChange={async (e) => {
+                      e.stopPropagation();
+                      await updateProductStock(product.id, e.target.checked ? 10000 : 0);
+                      toast.success("Stock status updated");
+                    }}
+                  />
+                  <div className="w-11 h-6 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary shadow-sm"></div>
+                </label>
+              </div>
             </div>
           )}
 
 
 
           {/* Pricing Section */}
-          {!isFarmer && (
+          {!isFarmer && !isAdmin && (
             <div className="border-t border-primary/10 pt-3 mt-auto">
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-primary/5 rounded-lg p-3">
@@ -334,7 +356,7 @@ const Marketplace = () => {
             >
               {t('view_details')} →
             </button>
-            {!isFarmer && (
+            {!isFarmer && !isAdmin && (
               <button
                 onClick={() => handleBuyNow(product)}
                 className="flex-1 btn-secondary py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-1"
@@ -368,10 +390,10 @@ const Marketplace = () => {
               </div>
               {isAdmin && (
                 <button
-                  onClick={() => navigate("/admin/update-products")}
-                  className="btn-primary px-6 sm:px-8 py-3 font-semibold text-sm sm:text-base whitespace-nowrap shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all"
+                  onClick={() => navigate("/admin/add-product")}
+                  className="bg-green-500 hover:bg-green-600 text-white px-6 sm:px-8 py-3 rounded-lg font-bold text-sm sm:text-base whitespace-nowrap shadow-[0_0_15px_rgba(34,197,94,0.3)] hover:shadow-[0_0_20px_rgba(34,197,94,0.5)] transform hover:-translate-y-1 transition-all flex items-center gap-2"
                 >
-                  🛠️ {t('manage_products')}
+                  ➕ Add Product
                 </button>
               )}
             </div>
@@ -435,10 +457,10 @@ const Marketplace = () => {
             </p>
             {isAdmin && (
               <button
-                onClick={() => navigate("/admin/update-products")}
-                className="btn-primary px-8 py-3 font-semibold"
+                onClick={() => navigate("/admin/add-product")}
+                className="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-xl font-bold shadow-[0_0_15px_rgba(34,197,94,0.3)] hover:shadow-[0_0_20px_rgba(34,197,94,0.5)] transform hover:-translate-y-1 transition-all flex items-center gap-2"
               >
-                {t('add_first_product')}
+                ➕ Add First Product
               </button>
             )}
           </div>

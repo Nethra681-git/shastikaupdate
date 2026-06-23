@@ -20,6 +20,9 @@ export interface ChatMessage {
   message: string;
   timestamp: string;
   read: boolean;
+  attachmentUrl?: string;
+  attachmentType?: string;
+  attachmentName?: string;
 }
 
 export interface ChatUser {
@@ -132,6 +135,9 @@ export const sendMessage = (messageData: {
   message: string;
   senderName: string;
   senderRole: string;
+  attachmentUrl?: string;
+  attachmentType?: string;
+  attachmentName?: string;
 }) => {
   if (!socket?.connected) {
     console.error('❌ Cannot send message - socket not connected');
@@ -139,7 +145,17 @@ export const sendMessage = (messageData: {
   }
 
   console.log('📤 Sending message to:', messageData.receiverUserId);
-  socket.emit('message:send', messageData);
+  
+  // Strip attachment fields when sending over socket to prevent Node server 500 errors
+  const payload = {
+    senderUserId: messageData.senderUserId,
+    receiverUserId: messageData.receiverUserId,
+    message: messageData.attachmentUrl ? (messageData.message || "[Attachment]") : messageData.message,
+    senderName: messageData.senderName,
+    senderRole: messageData.senderRole
+  };
+
+  socket.emit('message:send', payload);
 };
 
 /**

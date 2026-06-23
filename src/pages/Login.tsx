@@ -35,6 +35,13 @@ const Login = () => {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [googleError, setGoogleError] = useState('');
 
+  // ✅ Buyer specific fields
+  const [buyerType, setBuyerType] = useState<'own' | 'company'>('own');
+  const [companyName, setCompanyName] = useState('');
+  const [website, setWebsite] = useState('');
+  const [location, setLocation] = useState('');
+  const [designation, setDesignation] = useState('');
+
   // ✅ Google role modal state
   const [showGoogleRoleModal, setShowGoogleRoleModal] = useState(false);
   const [googleRoleSelected, setGoogleRoleSelected] = useState<UserRole>('buyer');
@@ -50,7 +57,8 @@ const Login = () => {
   const handleEmailChange = (val: string) => {
     setEmail(val);
     const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
-    setShowRoleSelect(isValidEmail);
+    const isValidPhone = /^\d+$/.test(val) && val.length >= 8;
+    setShowRoleSelect(isValidEmail || isValidPhone);
   };
 
   const validate = () => {
@@ -67,9 +75,22 @@ const Login = () => {
       if (!country) e.country = t('countryRequired');
       if (!password) e.password = t('passwordRequired');
       else if (password.length < 6) e.password = `${t('minimumCharacters')}`;
+
+      if (role === 'buyer') {
+        if (!location.trim()) e.location = 'Location is required';
+        if (buyerType === 'company') {
+          if (!companyName.trim()) e.companyName = 'Company name is required';
+          if (!website.trim()) e.website = 'Website is required';
+          if (!designation.trim()) e.designation = 'Designation is required';
+        }
+      }
+      
+      if (role === 'buyer' && !email) e.email = t('emailAddress');
+      else if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) e.email = t('invalidEmailFormat');
+    } else {
+      if (!email) e.email = t('emailAddress');
     }
-    if (!email) e.email = t('emailAddress');
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) e.email = t('invalidEmailFormat');
+    
     if (!isSignup && !password) e.password = t('passwordRequired');
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -90,8 +111,13 @@ const Login = () => {
       return;
     }
 
+    let loginEmail = email.trim();
+    if (!loginEmail.includes('@') && /^\d+$/.test(loginEmail)) {
+      loginEmail = `${loginEmail}@farmer.shastika.com`;
+    }
+
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, loginEmail, password);
       const firebaseUser = userCredential.user;
       const userRef = doc(db, 'users', firebaseUser.uid);
       const userSnap = await getDoc(userRef);
@@ -127,15 +153,24 @@ const Login = () => {
 
   const handleSignup = async () => {
     if (!validate()) return;
-    if (users.find(u => u.email === email)) { setErrors({ email: 'Email already registered' }); return; }
+    
+    let signupEmail = email.trim();
+    if (role === 'farmer' && !signupEmail) {
+      signupEmail = `${phone}@farmer.shastika.com`;
+    }
+
+    if (users.find(u => u.email === signupEmail)) { setErrors({ email: 'Email or phone already registered' }); return; }
 
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(auth, signupEmail, password);
       const firebaseUser = userCredential.user;
       const userType = country === 'India' ? 'domestic' : 'international';
       const newUser = {
-        id: firebaseUser.uid, name, email, phone, country, role,
-        status: 'pending' as const, userType, verified: false
+        id: firebaseUser.uid, name, email: signupEmail, phone, country, role,
+        status: 'pending' as const, userType, verified: false,
+        ...(role === 'buyer' ? {
+          buyerType, companyName, website, location, designation
+        } : {})
       };
       addUser(newUser);
       await setDoc(doc(db, 'users', firebaseUser.uid), { ...newUser, createdAt: new Date().toISOString() });
@@ -143,6 +178,7 @@ const Login = () => {
       setTimeout(() => {
         setEmail(''); setPassword(''); setName('');
         setPhone(''); setCountry(''); setIsSignup(false);
+        setCompanyName(''); setWebsite(''); setLocation(''); setDesignation(''); setBuyerType('own');
       }, 2000);
     } catch (error: any) {
       if (error.code === 'auth/email-already-in-use') setErrors({ email: 'Email already registered' });
@@ -356,7 +392,7 @@ const Login = () => {
               {errors.name && <p className="text-destructive text-xs mt-1.5 font-medium">{errors.name}</p>}
             </div>
             <div>
-              <label className="text-sm font-semibold text-foreground mb-2 block">{t('emailAddress')} *</label>
+              <label className="text-sm font-semibold text-foreground mb-2 block">{t('emailAddress')} {role === 'buyer' ? '*' : '(Optional)'}</label>
               <input type="email" className={inputClass} style={inputStyle} value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com"
                 onFocus={e => e.currentTarget.style.boxShadow = focusStyle} onBlur={e => e.currentTarget.style.boxShadow = inputStyle.boxShadow} />
               {errors.email && <p className="text-destructive text-xs mt-1.5 font-medium">{errors.email}</p>}
@@ -385,6 +421,54 @@ const Login = () => {
                 <option value="buyer" className="bg-background">{t('buyer')}</option>
               </select>
             </div>
+
+            {role === 'buyer' && (
+              <div className="space-y-4 p-5 border border-primary/20 rounded-xl bg-primary/5">
+                <p className="text-sm font-bold text-primary mb-2">Buyer Details</p>
+                
+                <div className="flex gap-6 mb-2">
+                  <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer font-medium">
+                    <input type="radio" name="buyerType" value="own" checked={buyerType === 'own'} onChange={() => setBuyerType('own')} className="accent-primary w-4 h-4" />
+                    Own (Individual)
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer font-medium">
+                    <input type="radio" name="buyerType" value="company" checked={buyerType === 'company'} onChange={() => setBuyerType('company')} className="accent-primary w-4 h-4" />
+                    Company
+                  </label>
+                </div>
+
+                <div>
+                  <label className="text-sm font-semibold text-foreground mb-2 block">Company Name {buyerType === 'company' && '*'}</label>
+                  <input className={inputClass} style={inputStyle} value={companyName} onChange={e => setCompanyName(e.target.value)} placeholder="Company Name"
+                    onFocus={e => e.currentTarget.style.boxShadow = focusStyle} onBlur={e => e.currentTarget.style.boxShadow = inputStyle.boxShadow} />
+                  {errors.companyName && <p className="text-destructive text-xs mt-1.5 font-medium">{errors.companyName}</p>}
+                </div>
+
+                <div>
+                  <label className="text-sm font-semibold text-foreground mb-2 block">Website {buyerType === 'company' && '*'}</label>
+                  <input className={inputClass} style={inputStyle} value={website} onChange={e => setWebsite(e.target.value)} placeholder="https://..."
+                    onFocus={e => e.currentTarget.style.boxShadow = focusStyle} onBlur={e => e.currentTarget.style.boxShadow = inputStyle.boxShadow} />
+                  {errors.website && <p className="text-destructive text-xs mt-1.5 font-medium">{errors.website}</p>}
+                </div>
+
+                {buyerType === 'company' && (
+                  <div>
+                    <label className="text-sm font-semibold text-foreground mb-2 block">Designation *</label>
+                    <input className={inputClass} style={inputStyle} value={designation} onChange={e => setDesignation(e.target.value)} placeholder="e.g. Procurement Manager"
+                      onFocus={e => e.currentTarget.style.boxShadow = focusStyle} onBlur={e => e.currentTarget.style.boxShadow = inputStyle.boxShadow} />
+                    {errors.designation && <p className="text-destructive text-xs mt-1.5 font-medium">{errors.designation}</p>}
+                  </div>
+                )}
+
+                <div>
+                  <label className="text-sm font-semibold text-foreground mb-2 block">Location *</label>
+                  <input className={inputClass} style={inputStyle} value={location} onChange={e => setLocation(e.target.value)} placeholder="City, Address"
+                    onFocus={e => e.currentTarget.style.boxShadow = focusStyle} onBlur={e => e.currentTarget.style.boxShadow = inputStyle.boxShadow} />
+                  {errors.location && <p className="text-destructive text-xs mt-1.5 font-medium">{errors.location}</p>}
+                </div>
+              </div>
+            )}
+
             <div>
               <label className="text-sm font-semibold text-foreground mb-2 block">{t('password')} *</label>
               <div className="relative">
@@ -414,14 +498,14 @@ const Login = () => {
 
             {/* Email */}
             <div>
-              <label className="text-sm font-semibold text-foreground mb-2 block">{t('emailAddress')}</label>
+              <label className="text-sm font-semibold text-foreground mb-2 block">Email or Phone Number</label>
               <input
-                type="email"
+                type="text"
                 className={inputClass}
                 style={inputStyle}
                 value={email}
                 onChange={e => handleEmailChange(e.target.value)}
-                placeholder="you@example.com"
+                placeholder="you@example.com or phone number"
                 onFocus={e => e.currentTarget.style.boxShadow = focusStyle}
                 onBlur={e => e.currentTarget.style.boxShadow = inputStyle.boxShadow}
               />

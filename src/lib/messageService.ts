@@ -22,6 +22,9 @@ export interface Message {
   message: string;
   created_at: Timestamp | Date;
   read: boolean;
+  attachmentUrl?: string;
+  attachmentType?: string;
+  attachmentName?: string;
 }
 
 export interface ChatUser {
@@ -55,9 +58,12 @@ export const sendMessage = async (
   senderId: string,
   senderName: string,
   receiverId: string,
-  messageText: string
+  messageText: string,
+  attachmentUrl?: string,
+  attachmentType?: string,
+  attachmentName?: string
 ) => {
-  if (!messageText.trim()) return null;
+  if (!messageText.trim() && !attachmentUrl) return null;
 
   try {
     const messagesCollection = collection(db, "messages");
@@ -73,6 +79,9 @@ export const sendMessage = async (
       message: messageText.trim(),
       created_at: Timestamp.now(),
       read: false,
+      ...(attachmentUrl && { attachmentUrl }),
+      ...(attachmentType && { attachmentType }),
+      ...(attachmentName && { attachmentName }),
     });
     
     console.log("✅ Message sent with ID:", docRef.id);
@@ -135,6 +144,9 @@ export const subscribeToMessages = (
             message: data.message || '',
             created_at: data.created_at || Timestamp.now(),
             read: data.read || false,
+            attachmentUrl: data.attachmentUrl,
+            attachmentType: data.attachmentType,
+            attachmentName: data.attachmentName,
           };
           
           // If filtering by specific conversation, check here
@@ -288,7 +300,8 @@ export const subscribeToConversations = (
               lastMessageSender: data.sender_name || "",
               participants: data.participants || [],
               unreadCount: data.read ? 0 : 1,
-            });
+              attachmentType: data.attachmentType, // Used for 'preview' logic
+            } as Conversation & { attachmentType?: string }); // type assertion for preview 
           }
         });
         

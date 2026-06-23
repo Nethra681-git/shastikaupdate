@@ -69,6 +69,9 @@ export interface Product {
   shippingType: string;
   exportAvailable: boolean;
   packaging: string;
+  grade?: string;
+  gradeAPrice?: number;
+  gradeBPrice?: number;
 }
 
 export interface Order {
@@ -132,7 +135,7 @@ interface AppState {
   updatePaymentStatus: (paymentId: string, status: PaymentStatus, note?: string) => void;
   updateShipmentStatus: (orderId: string, status: ShipmentStatus) => void;
   updateProductPrice: (productId: string, domestic: number, exportPrice: number) => Promise<void>;
-  updateProductStock: (productId: string, quantity: number) => void;
+  updateProductStock: (productId: string, quantity: number) => Promise<void>;
   updateOrderFarmerStatus: (orderId: string, status: OrderAcceptStatus) => void;
   markOrderPaymentComplete: (orderId: string) => void;
   updateTrackingInfo: (orderId: string, trackingNumber: string, trackingLink: string) => void;
@@ -143,6 +146,8 @@ interface AppState {
   setProducts: (products: Product[]) => void;
   deleteProduct: (productId: string) => Promise<void>;
   updateProductExportStatus: (productId: string, exportAvailable: boolean) => Promise<void>;
+  updateProductGrade: (productId: string, grade: string) => Promise<void>;
+  updateProductGradePrices: (productId: string, gradeAPrice: number, gradeBPrice: number) => Promise<void>;
   submitRFQ: (rfq: RFQ) => Promise<void>;
 }
 
@@ -199,7 +204,16 @@ export const useStore = create<AppState>((set) => ({
       throw error;
     }
   },
-  updateProductStock: (productId, quantity) => set((s) => ({ products: s.products.map(p => p.id === productId ? { ...p, quantity } : p) })),
+  updateProductStock: async (productId, quantity) => {
+    try {
+      const { doc, updateDoc } = await import('firebase/firestore');
+      const productRef = doc(db, "products", productId);
+      await updateDoc(productRef, { quantity });
+    } catch (e) {
+      console.warn("Error updating stock in db", e);
+    }
+    set((s) => ({ products: s.products.map(p => p.id === productId ? { ...p, quantity } : p) }));
+  },
   addProduct: async (p) => {
     await addDoc(collection(db, "products"), p);
     set((s) => ({ products: [...s.products, { ...p, id: p.id || Date.now().toString() }] }));
@@ -222,6 +236,26 @@ export const useStore = create<AppState>((set) => ({
       console.warn("Error updating export status in db", e);
     }
     set((s) => ({ products: s.products.map(p => p.id === productId ? { ...p, exportAvailable } : p) }));
+  },
+  updateProductGrade: async (productId, grade) => {
+    try {
+      const { doc, updateDoc } = await import('firebase/firestore');
+      const productRef = doc(db, "products", productId);
+      await updateDoc(productRef, { grade });
+    } catch (e) {
+      console.warn("Error updating grade in db", e);
+    }
+    set((s) => ({ products: s.products.map(p => p.id === productId ? { ...p, grade } : p) }));
+  },
+  updateProductGradePrices: async (productId, gradeAPrice, gradeBPrice) => {
+    try {
+      const { doc, updateDoc } = await import('firebase/firestore');
+      const productRef = doc(db, "products", productId);
+      await updateDoc(productRef, { gradeAPrice, gradeBPrice });
+    } catch (e) {
+      console.warn("Error updating grade prices in db", e);
+    }
+    set((s) => ({ products: s.products.map(p => p.id === productId ? { ...p, gradeAPrice, gradeBPrice } : p) }));
   },
   updateOrderFarmerStatus: (orderId, status) => set((s) => ({ orders: s.orders.map(o => o.id === orderId ? { ...o, farmerAcceptStatus: status } : o) })),
   markOrderPaymentComplete: (orderId) => set((s) => ({ orders: s.orders.map(o => o.id === orderId ? { ...o, paymentCompleted: true } : o) })),

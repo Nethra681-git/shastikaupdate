@@ -37,8 +37,8 @@ export function generateInvoice(order: Order) {
   addRow('Product:', order.productName, left);
   addRow('Quantity:', `${order.quantity}`, right);
   y += 8;
-  addRow('Price/Unit:', `₹${order.price}`, left);
-  addRow('Total:', `₹${order.total}`, right);
+  addRow('Price/Unit:', `Rs. ${order.price}`, left);
+  addRow('Total:', `Rs. ${order.total}`, right);
   y += 8;
   addRow('Payment:', order.paymentMethod.toUpperCase(), left);
   addRow('Market:', order.marketType, right);
