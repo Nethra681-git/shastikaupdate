@@ -145,6 +145,7 @@ interface AppState {
   addProduct: (product: Product) => Promise<void>;
   setProducts: (products: Product[]) => void;
   deleteProduct: (productId: string) => Promise<void>;
+  updateProduct: (productId: string, updatedFields: Partial<Product>) => Promise<void>;
   updateProductExportStatus: (productId: string, exportAvailable: boolean) => Promise<void>;
   updateProductGrade: (productId: string, grade: string) => Promise<void>;
   updateProductGradePrices: (productId: string, gradeAPrice: number, gradeBPrice: number) => Promise<void>;
@@ -232,12 +233,22 @@ export const useStore = create<AppState>((set) => ({
   },
   deleteProduct: async (productId) => {
     try {
-      const { doc, deleteDoc } = await import('firebase/firestore');
-      await deleteDoc(doc(db, "products", productId));
+       const { doc, deleteDoc } = await import('firebase/firestore');
+       await deleteDoc(doc(db, "products", productId));
     } catch (e) {
-      console.warn("Product might not be in Firestore, removing locally", e);
+       console.warn("Product might not be in Firestore, removing locally", e);
     }
     set((s) => ({ products: s.products.filter(p => p.id !== productId) }));
+  },
+  updateProduct: async (productId, updatedFields) => {
+    try {
+      const { doc, updateDoc } = await import('firebase/firestore');
+      const productRef = doc(db, "products", productId);
+      await updateDoc(productRef, updatedFields);
+    } catch (e) {
+      console.warn("Error updating product in db", e);
+    }
+    set((s) => ({ products: s.products.map(p => p.id === productId ? { ...p, ...updatedFields } : p) }));
   },
   updateProductExportStatus: async (productId, exportAvailable) => {
     try {
