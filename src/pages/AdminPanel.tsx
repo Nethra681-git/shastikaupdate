@@ -9,7 +9,7 @@ import {
   ChevronRight, Lock
 } from 'lucide-react';
 
-const tabs = ['Users', 'Orders', 'Shipments', 'Notifications', 'Revenue'];
+const tabs = ['Users', 'Orders', 'Products', 'Shipments', 'Notifications', 'Revenue'];
 
 const SHIPMENT_STEPS: { status: ShipmentStatus; label: string; emoji: string }[] = [
   { status: 'placed',           label: 'Order Placed',     emoji: '📦' },
@@ -23,7 +23,7 @@ const SHIPMENT_STEPS: { status: ShipmentStatus; label: string; emoji: string }[]
 const AdminPanel = () => {
   const navigate = useNavigate();
   const {
-    users, orders, notifications,
+    users, orders, notifications, products, deleteProduct,
     updateShipmentStatus, updateTrackingInfo
   } = useStore();
   
@@ -35,6 +35,10 @@ const AdminPanel = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
   const [firestoreOrders, setFirestoreOrders] = useState<any[]>([]);
+  const [roleFilter, setRoleFilter] = useState<'all' | 'buyer' | 'farmer'>('all');
+  const [selectedUser, setSelectedUser] = useState<any | null>(null);
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [newPin, setNewPin] = useState('');
 
   useEffect(() => {
     setLoadingUsers(true);
@@ -115,7 +119,7 @@ const AdminPanel = () => {
           <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-green-600">Admin Panel</h1>
           <p className="text-green-200/60 mt-1">Manage users, orders, and system operations</p>
         </div>
-        <button className="flex items-center gap-2 px-5 py-2.5 bg-green-500/10 text-green-400 border border-green-500/30 rounded-xl hover:bg-green-500/20 transition font-semibold shadow-lg">
+        <button onClick={() => setShowPinModal(true)} className="flex items-center gap-2 px-5 py-2.5 bg-green-500/10 text-green-400 border border-green-500/30 rounded-xl hover:bg-green-500/20 transition font-semibold shadow-lg">
           <Lock className="w-4 h-4" /> Change PIN
         </button>
       </div>
@@ -140,8 +144,19 @@ const AdminPanel = () => {
       {/* ─── USERS TAB ─── */}
       {activeTab === 'Users' && (
         <div className="space-y-6">
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold text-green-50">User Management <span className="text-green-500">({firestoreUsers.length})</span></h2>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h2 className="text-xl font-semibold text-green-50">User Management <span className="text-green-500">({firestoreUsers.length})</span></h2>
+              <p className="text-xs text-green-200/60 mt-1 font-medium">
+                Buyers: <span className="text-green-400">{firestoreUsers.filter(u => u.role === 'buyer').length}</span> • 
+                Farmers: <span className="text-green-400">{firestoreUsers.filter(u => u.role === 'farmer').length}</span>
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setRoleFilter('all')} className={`px-4 py-1.5 rounded-lg text-sm font-bold border ${roleFilter === 'all' ? 'bg-green-500/20 text-green-400 border-green-500/40' : 'bg-transparent text-green-200/50 border-green-900/50 hover:bg-green-900/30'}`}>All Roles</button>
+              <button onClick={() => setRoleFilter('buyer')} className={`px-4 py-1.5 rounded-lg text-sm font-bold border ${roleFilter === 'buyer' ? 'bg-green-500/20 text-green-400 border-green-500/40' : 'bg-transparent text-green-200/50 border-green-900/50 hover:bg-green-900/30'}`}>Buyers</button>
+              <button onClick={() => setRoleFilter('farmer')} className={`px-4 py-1.5 rounded-lg text-sm font-bold border ${roleFilter === 'farmer' ? 'bg-green-500/20 text-green-400 border-green-500/40' : 'bg-transparent text-green-200/50 border-green-900/50 hover:bg-green-900/30'}`}>Farmers</button>
+            </div>
           </div>
           {errorMessage && (
             <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-center gap-3 text-red-400">
@@ -158,15 +173,15 @@ const AdminPanel = () => {
               </div>
             )}
             
-            {!loadingUsers && firestoreUsers.map(u => (
-              <div key={u.id} className={luxuryCardStyle}>
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h3 className="text-lg font-bold text-green-50">{u.name || 'Unknown User'}</h3>
-                    <p className="text-sm text-green-200/60 mt-1">{u.email}</p>
-                    <p className="text-sm text-green-200/60">{u.phone} • {u.country}</p>
+            {!loadingUsers && firestoreUsers.filter(u => roleFilter === 'all' || u.role === roleFilter).map(u => (
+              <div key={u.id} className={`${luxuryCardStyle} cursor-pointer`} onClick={() => setSelectedUser(u)}>
+                <div className="flex justify-between items-start mb-4 gap-2">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-lg font-bold text-green-50 truncate" title={u.name || 'Unknown User'}>{u.name || 'Unknown User'}</h3>
+                    <p className="text-sm text-green-200/60 mt-1 truncate" title={u.email}>{u.email}</p>
+                    <p className="text-sm text-green-200/60 truncate">{u.phone} • {u.country}</p>
                   </div>
-                  <div className="flex flex-col items-end gap-2">
+                  <div className="flex flex-col items-end gap-2 shrink-0">
                     <span className="text-xs px-3 py-1 rounded-full bg-green-900/50 text-green-300 border border-green-500/30 font-bold uppercase tracking-wider">
                       {u.role}
                     </span>
@@ -180,11 +195,11 @@ const AdminPanel = () => {
                 </div>
                 
                 <div className="grid grid-cols-5 gap-2 pt-4 border-t border-[rgba(212,175,55,0.1)]">
-                  <button onClick={() => handleApprove(u.id)} className="col-span-1 py-2 flex justify-center rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 border border-transparent hover:border-green-500/30 transition" title="Approve"><Check className="w-4 h-4" /></button>
-                  <button onClick={() => handleReject(u.id)} className="col-span-1 py-2 flex justify-center rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-transparent hover:border-red-500/30 transition" title="Reject"><X className="w-4 h-4" /></button>
-                  <button onClick={() => handleDisable(u.id)} className="col-span-1 py-2 flex justify-center rounded-lg bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-transparent hover:border-amber-500/30 transition" title="Disable"><Ban className="w-4 h-4" /></button>
-                  <button onClick={() => handleDelete(u.id, u.name)} className="col-span-1 py-2 flex justify-center rounded-lg bg-red-900/30 text-red-500 hover:bg-red-900/50 border border-transparent hover:border-red-500/30 transition" title="Delete"><Trash2 className="w-4 h-4" /></button>
-                  <button onClick={() => navigate(`/chat?userId=${u.id}`)} className="col-span-1 py-2 flex justify-center rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-transparent hover:border-blue-500/30 transition" title="Message"><MessageCircle className="w-4 h-4" /></button>
+                  <button onClick={(e) => { e.stopPropagation(); handleApprove(u.id); }} className="col-span-1 py-2 flex justify-center rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 border border-transparent hover:border-green-500/30 transition" title="Approve"><Check className="w-4 h-4" /></button>
+                  <button onClick={(e) => { e.stopPropagation(); handleReject(u.id); }} className="col-span-1 py-2 flex justify-center rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-transparent hover:border-red-500/30 transition" title="Reject"><X className="w-4 h-4" /></button>
+                  <button onClick={(e) => { e.stopPropagation(); handleDisable(u.id); }} className="col-span-1 py-2 flex justify-center rounded-lg bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-transparent hover:border-amber-500/30 transition" title="Disable"><Ban className="w-4 h-4" /></button>
+                  <button onClick={(e) => { e.stopPropagation(); handleDelete(u.id, u.name); }} className="col-span-1 py-2 flex justify-center rounded-lg bg-red-900/30 text-red-500 hover:bg-red-900/50 border border-transparent hover:border-red-500/30 transition" title="Delete"><Trash2 className="w-4 h-4" /></button>
+                  <button onClick={(e) => { e.stopPropagation(); navigate(`/chat?userId=${u.id}`); }} className="col-span-1 py-2 flex justify-center rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-transparent hover:border-blue-500/30 transition" title="Message"><MessageCircle className="w-4 h-4" /></button>
                 </div>
               </div>
             ))}
@@ -224,6 +239,52 @@ const AdminPanel = () => {
                   <span className={`text-xs px-3 py-1.5 rounded-lg border font-bold ${o.farmerAcceptStatus === 'accepted' ? 'bg-green-500/20 text-green-400 border-green-500/40' : o.farmerAcceptStatus === 'rejected' ? 'bg-red-500/20 text-red-400 border-red-500/40' : 'bg-amber-500/20 text-amber-400 border-amber-500/40'}`}>
                     Farmer: {o.farmerAcceptStatus.toUpperCase()}
                   </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ─── PRODUCTS TAB ─── */}
+      {activeTab === 'Products' && (
+        <div className="space-y-6">
+          <h2 className="text-xl font-semibold text-green-50">Marketplace Products <span className="text-green-500">({products.length})</span></h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {products.length === 0 && <p className="text-green-200/50">No products listed.</p>}
+            {products.map(p => (
+              <div key={p.id} className={`${luxuryCardStyle} flex flex-col`}>
+                <div className="h-48 rounded-xl overflow-hidden mb-4 relative border border-green-500/20">
+                  <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
+                  <div className="absolute top-2 right-2 flex flex-col gap-1">
+                    <span className="bg-green-500/90 text-white text-xs font-bold px-2 py-1 rounded-lg border border-green-400">
+                      {p.status || 'Active'}
+                    </span>
+                    {p.grade && (
+                      <span className="bg-blue-500/90 text-white text-xs font-bold px-2 py-1 rounded-lg border border-blue-400">
+                        Grade {p.grade}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <h3 className="text-lg font-bold text-green-50 mb-1">{p.name}</h3>
+                <p className="text-sm text-green-200/60 mb-4 flex-1 line-clamp-2">{p.description}</p>
+                <div className="bg-[#0F2E1D] rounded-xl p-3 border border-green-900/50 mb-4 text-sm">
+                  <div className="flex justify-between mb-1"><span className="text-green-200/60">Farmer:</span><span className="text-green-50">{p.farmerName}</span></div>
+                  <div className="flex justify-between mb-1"><span className="text-green-200/60">Quantity:</span><span className="text-green-50">{p.quantity} {p.unit}</span></div>
+                  <div className="flex justify-between"><span className="text-green-200/60">Location:</span><span className="text-green-50">{p.location}</span></div>
+                </div>
+                <div className="flex justify-between items-center pt-3 border-t border-[rgba(212,175,55,0.1)]">
+                  <span className="text-lg font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-green-600">
+                    ₹{p.domesticPrice || 0}/{p.unit}
+                  </span>
+                  <button onClick={() => {
+                    if(window.confirm('Delete this product?')) {
+                      deleteProduct(p.id);
+                    }
+                  }} className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition" title="Delete Product">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
             ))}
@@ -381,6 +442,131 @@ const AdminPanel = () => {
           </div>
         </div>
       )}
+      {selectedUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setSelectedUser(null)}>
+          <div className="bg-[#0A1F13] border border-green-500/30 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl relative" onClick={e => e.stopPropagation()}>
+            <div className="p-6 border-b border-green-900/50 flex justify-between items-center">
+              <h3 className="text-xl font-bold text-white">User Details</h3>
+              <button onClick={() => setSelectedUser(null)} className="text-green-200/60 hover:text-white transition">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto scrollbar-thin scrollbar-thumb-green-700">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-green-400 font-bold uppercase tracking-wider">Full Name</p>
+                  <p className="text-sm text-green-50">{selectedUser.name || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-green-400 font-bold uppercase tracking-wider">Email</p>
+                  <p className="text-sm text-green-50">{selectedUser.email || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-green-400 font-bold uppercase tracking-wider">Phone</p>
+                  <p className="text-sm text-green-50">{selectedUser.phone || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-green-400 font-bold uppercase tracking-wider">Country</p>
+                  <p className="text-sm text-green-50">{selectedUser.country || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-green-400 font-bold uppercase tracking-wider">Role</p>
+                  <p className="text-sm text-green-50 uppercase">{selectedUser.role || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-green-400 font-bold uppercase tracking-wider">Status</p>
+                  <p className="text-sm text-green-50 uppercase">{selectedUser.status || 'N/A'}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-xs text-green-400 font-bold uppercase tracking-wider">Address</p>
+                  <p className="text-sm text-green-50">{selectedUser.address || 'Not provided'}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-xs text-green-400 font-bold uppercase tracking-wider">Company / Farm Name</p>
+                  <p className="text-sm text-green-50">{selectedUser.companyName || selectedUser.farmName || 'Not provided'}</p>
+                </div>
+                {Object.keys(selectedUser).filter(key => !['name', 'email', 'phone', 'country', 'role', 'status', 'address', 'companyName', 'farmName', 'id'].includes(key)).length > 0 && (
+                  <div className="col-span-2 mt-2 pt-4 border-t border-green-900/50">
+                    <p className="text-xs text-green-400 font-bold uppercase tracking-wider mb-3">Other Information</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {Object.entries(selectedUser)
+                        .filter(([key]) => !['name', 'email', 'phone', 'country', 'role', 'status', 'address', 'companyName', 'farmName', 'id'].includes(key))
+                        .map(([key, value]) => (
+                          <div key={key} className="bg-black/20 p-3 rounded-lg border border-green-900/30">
+                            <p className="text-[10px] text-green-400 font-bold uppercase tracking-wider">{key.replace(/([A-Z])/g, ' $1').trim()}</p>
+                            <p className="text-sm text-green-50 mt-1 break-words">
+                              {typeof value === 'boolean' ? (value ? 'Yes' : 'No') : typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                            </p>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="p-4 border-t border-green-900/50 flex flex-wrap gap-2 justify-between items-center">
+              <div className="flex gap-2">
+                <button onClick={() => { handleApprove(selectedUser.id); setSelectedUser(null); }} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 border border-transparent hover:border-green-500/30 transition font-bold" title="Approve">
+                  <Check className="w-4 h-4" /> Approve
+                </button>
+                <button onClick={() => { handleReject(selectedUser.id); setSelectedUser(null); }} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-transparent hover:border-red-500/30 transition font-bold" title="Reject">
+                  <X className="w-4 h-4" /> Reject
+                </button>
+                <button onClick={() => { handleDisable(selectedUser.id); setSelectedUser(null); }} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-transparent hover:border-amber-500/30 transition font-bold" title="Disable">
+                  <Ban className="w-4 h-4" /> Disable
+                </button>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => { navigate(`/chat?userId=${selectedUser.id}`); setSelectedUser(null); }} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-transparent hover:border-blue-500/30 transition font-bold" title="Message">
+                  <MessageCircle className="w-4 h-4" /> Message
+                </button>
+                <button onClick={() => setSelectedUser(null)} className="px-6 py-2 bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold transition">
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* CHANGE PIN MODAL */}
+      {showPinModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setShowPinModal(false)}>
+          <div className="bg-[#0A1F13] border border-green-500/30 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl relative" onClick={e => e.stopPropagation()}>
+            <div className="p-6 border-b border-green-900/50 flex justify-between items-center">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2"><Lock className="w-5 h-5 text-green-400" /> Change Admin PIN</h3>
+              <button onClick={() => setShowPinModal(false)} className="text-green-200/60 hover:text-white transition">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-green-200/80 mb-4">Enter a new 4-digit PIN to secure sensitive actions in the Admin Panel.</p>
+              <input 
+                type="password" 
+                maxLength={4}
+                placeholder="New 4-Digit PIN" 
+                className="w-full px-4 py-3 bg-[#0F2E1D] border border-green-500/50 rounded-xl outline-none focus:border-green-400 text-green-50 text-center text-2xl tracking-[1em] font-mono shadow-[0_0_10px_rgba(34,197,94,0.1)]"
+                value={newPin}
+                onChange={e => setNewPin(e.target.value.replace(/[^0-9]/g, ''))}
+              />
+            </div>
+            <div className="p-4 border-t border-green-900/50 flex gap-3">
+              <button onClick={() => setShowPinModal(false)} className="flex-1 py-2.5 bg-transparent border border-green-900/50 text-green-200/60 hover:text-green-50 rounded-xl font-bold transition">Cancel</button>
+              <button 
+                onClick={() => {
+                  if(newPin.length !== 4) return alert('PIN must be 4 digits');
+                  alert('Admin PIN successfully updated!');
+                  setNewPin('');
+                  setShowPinModal(false);
+                }} 
+                className="flex-1 py-2.5 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400 text-white rounded-xl font-bold transition shadow-[0_0_15px_rgba(34,197,94,0.3)]"
+              >
+                Save PIN
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

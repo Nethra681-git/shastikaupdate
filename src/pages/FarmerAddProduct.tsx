@@ -14,6 +14,7 @@ const FarmerAddProduct = () => {
     unit: 'KG',
     harvestDate: '',
     grade: 'A',
+    shippingType: 'Sea Way / Air Way',
   });
   
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -57,7 +58,7 @@ const FarmerAddProduct = () => {
       exportPrice: 0,
       quantity: Number(formData.quantity),
       unit: formData.unit.toLowerCase(),
-      shippingType: 'Sea Way / Air Way',
+      shippingType: formData.shippingType,
       exportAvailable: true,
       packaging: 'Standard Packaging',
       // Store additional custom fields
@@ -85,6 +86,7 @@ const FarmerAddProduct = () => {
         unit: 'KG',
         harvestDate: '',
         grade: 'A',
+        shippingType: 'Sea Way / Air Way',
       });
       setImageFile(null);
       setImageBase64('');
@@ -169,18 +171,34 @@ const FarmerAddProduct = () => {
             </div>
           </div>
 
-          {/* Row 3: Grade Full Width */}
-          <div>
-            <label className="block text-sm font-semibold text-green-100 mb-2">Grade</label>
-            <select 
-              value={formData.grade}
-              onChange={e => setFormData({...formData, grade: e.target.value})}
-              className="w-full px-4 py-3 bg-[#0F2E1D] border border-green-900/50 rounded-xl text-green-50 focus:ring-2 focus:ring-green-500/30 focus:border-green-500 transition-all outline-none cursor-pointer"
-            >
-              <option value="A">Grade A (Export Quality)</option>
-              <option value="B">Grade B (Premium Domestic)</option>
-              <option value="C">Grade C (Standard)</option>
-            </select>
+          {/* Row 3: Grade & Shipping */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-semibold text-green-100 mb-2">Grade</label>
+              <select 
+                value={formData.grade}
+                onChange={e => setFormData({...formData, grade: e.target.value})}
+                className="w-full px-4 py-3 bg-[#0F2E1D] border border-green-900/50 rounded-xl text-green-50 focus:ring-2 focus:ring-green-500/30 focus:border-green-500 transition-all outline-none cursor-pointer"
+              >
+                <option value="A">Grade A (Export Quality)</option>
+                <option value="B">Grade B (Premium Domestic)</option>
+                <option value="C">Grade C (Standard)</option>
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-semibold text-green-100 mb-2">Shipping Options</label>
+              <select 
+                value={formData.shippingType}
+                onChange={e => setFormData({...formData, shippingType: e.target.value})}
+                className="w-full px-4 py-3 bg-[#0F2E1D] border border-green-900/50 rounded-xl text-green-50 focus:ring-2 focus:ring-green-500/30 focus:border-green-500 transition-all outline-none cursor-pointer"
+              >
+                <option value="Sea Way / Air Way">Sea Way / Air Way</option>
+                <option value="Sea Way">Sea Way Only</option>
+                <option value="Air Way">Air Way Only</option>
+                <option value="Domestic Transport">Domestic Transport</option>
+              </select>
+            </div>
           </div>
           
           {/* Row 4: Photo Upload Full Width */}

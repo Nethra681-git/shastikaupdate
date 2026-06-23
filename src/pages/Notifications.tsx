@@ -14,9 +14,14 @@ const getNotificationIcon = (title: string) => {
 
 const Notifications = () => {
   const { currentUser, notifications, markNotificationRead } = useStore();
+  const getSafeTime = (ts: string) => {
+    const time = new Date(ts).getTime();
+    return isNaN(time) ? 0 : time;
+  };
+
   const myNotifs = notifications
     .filter(n => currentUser?.role ? n.targetRoles.includes(currentUser.role) : false)
-    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    .sort((a, b) => getSafeTime(b.timestamp) - getSafeTime(a.timestamp));
 
   const hasUnread = myNotifs.some(n => !n.read);
 
@@ -71,7 +76,10 @@ const Notifications = () => {
                   {n.message}
                 </p>
                 <p className="text-xs text-muted-foreground mt-2 font-medium flex items-center gap-1">
-                  {formatDistanceToNow(new Date(n.timestamp), { addSuffix: true })}
+                  {(() => {
+                    const date = new Date(n.timestamp);
+                    return isNaN(date.getTime()) ? n.timestamp : formatDistanceToNow(date, { addSuffix: true });
+                  })()}
                 </p>
               </div>
               {!n.read && (

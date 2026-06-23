@@ -200,10 +200,10 @@ function getBotResponse(input: string, t: any, liveProducts: ReturnType<typeof u
   }
 
   // Export / International Price check
-  if (/\b(export|international|interantinol|usd|foreign|quotation|quote|abroad)\b/.test(q)) {
+  if (/\b(export|import|international|internatinol|interantinol|usd|foreign|quotation|quote|abroad)\b/.test(q)) {
     return {
       html: true,
-      text: `For export pricing, please contact our Admin:<br/><br/>📞 +91 7397612015<br/>💬 WhatsApp: +91 9566266241<br/>📧 shastikaglobalimpexprivatelimited@gmail.com`
+      text: `For export pricing, please contact our Admin:<br/><br/>📞 +91 7397612015<br/>💬 WhatsApp: +91 9566266241<br/>📧 shastikaglobalimpexprivatelimited@gmail.com<br/>👤`
     };
   }
 
@@ -219,11 +219,14 @@ function getBotResponse(input: string, t: any, liveProducts: ReturnType<typeof u
   const hasPriceKeyword = /\b(price|cost|rate)\b/.test(q);
 
   // If asking for ALL prices / price list
-  if (/\b(all prices|price list|list of prices)\b/.test(q)) {
-    const priceList = liveProducts.map(p => `• <strong>${p.name}</strong>: ₹${p.domesticPrice}/${p.unit}`).join('<br/>');
+  if (/\b(all prices|price list|list of prices|domestic price|domastic price|market price|local price|today's price|todays price|today price)\b/.test(q)) {
+    const priceList = liveProducts.length > 0 
+      ? liveProducts.map(p => `• <strong>${p.name}</strong>: ₹${p.domesticPrice}/${p.unit}`).join('<br/>')
+      : 'No products currently available in the marketplace.';
+      
     return {
       html: true,
-      text: `<strong>Today's Market Price</strong> 🌿<br/><br/>${priceList}<br/><br/><span style="color:#86efac;font-size:12px;">For export rates, contact admin:<br/>📞 +91 7397612015<br/>💬 +91 9566266241</span>`
+      text: `<strong>Today's Domestic Market Price</strong> 🌿<br/><br/>${priceList}`
     };
   }
 
@@ -244,20 +247,14 @@ function getBotResponse(input: string, t: any, liveProducts: ReturnType<typeof u
       
       return {
         html: true,
-        text: `<strong>${titleName} - Domestic Market Price 🌿</strong><br/><br/>${priceLines}<br/><br/><span style="font-size:12px;">Prices as per current market rates.</span><br/><br/><span style="color:#86efac;font-size:12px;">For export pricing, contact admin:<br/>📞 +91 7397612015</span>`
+        text: `<strong>${titleName} - Domestic Market Price 🌿</strong><br/><br/>${priceLines}<br/><br/><span style="font-size:12px;">Prices as per current market rates.</span>`
       };
     } else {
       return { html: true, text: `Product not available in our marketplace currently.` };
     }
   }
 
-  // If asking "domestic price" WITHOUT specific product
-  if (/\b(domestic price|market price|local price|today's price|todays price|today price)\b/.test(q)) {
-    return {
-      html: true,
-      text: `Which product price would you like to know?<br/>Please specify the product name 🌿`
-    };
-  }
+
 
   // If asking JUST "price" without product
   if (q === "price" || q === "cost" || q === "rate") {

@@ -5,8 +5,10 @@ import { useTranslation } from "react-i18next";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { useStore } from "@/lib/store";
+import { useStore, Product } from "@/lib/store";
 import { useProtectedRoute } from "@/hooks/useProtectedRoute";
+import { collection, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import AppLayout from "@/components/AppLayout";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -16,11 +18,12 @@ import OrderPage from "./pages/OrderPage";
 import Orders from "./pages/Orders";
 import Payments from "./pages/Payments";
 import Shipment from "./pages/Shipment";
-import ChatPage from "./pages/ChatPage";
+import Chat from "./pages/Chat";
 import ShastikaChatbot from "./pages/cocobot";
 import Verification from "./pages/Verification";
 import Profile from "./pages/Profile";
 import AdminPanel from "./pages/AdminPanel";
+import AdminDashboardNew from "./pages/AdminDashboardNew";
 import AdminProducts from "./pages/AdminProducts";
 import AdminUpdateProducts from "./pages/AdminUpdateProducts";
 import Notifications from "./pages/Notifications";
@@ -89,13 +92,67 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   return <AppLayout>{children}</AppLayout>;
 };
 
+const StandaloneAdminRoute = ({ children }: { children: React.ReactNode }) => {
+  const { currentUser } = useStore();
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setReady(true), 800);
+    return () => clearTimeout(t);
+  }, []);
+
+  if (!ready) return (
+    <div className="flex items-center justify-center min-h-screen bg-[#064e3b]">
+      <div className="animate-pulse text-green-200">Loading...</div>
+    </div>
+  );
+
+  if (!currentUser || currentUser.role !== 'admin') return <Navigate to="/dashboard" replace />;
+  return <>{children}</>;
+};
+
 const FarmerRoute = ({ children }: { children: React.ReactNode }) => {
   const { currentUser } = useStore();
   if (!currentUser || currentUser.role !== 'farmer') return <Navigate to="/dashboard" replace />;
   return <AppLayout>{children}</AppLayout>;
 };
 
-const App = () => (
+const App = () => {
+  const { setProducts } = useStore();
+
+  useEffect(() => {
+    // Listen for live updates to the products collection
+    const unsubscribe = onSnapshot(collection(db, "products"), (snapshot) => {
+      const firestoreProducts: Record<string, any> = {};
+      snapshot.docs.forEach((doc) => {
+        firestoreProducts[doc.id] = doc.data();
+      });
+
+      // We merge firestore data over the default products, or just load them directly if they are entirely in firestore.
+      // Assuming store.ts defaultProducts are the baseline:
+      import('@/lib/store').then(({ PRODUCTS }) => {
+        const mergedProducts = (PRODUCTS as unknown as Product[]).map(p => ({
+          ...p,
+          ...(firestoreProducts[p.id] || {})
+        }));
+        
+        // Add any NEW products created by farmers that aren't in the default PRODUCTS list
+        snapshot.docs.forEach((doc) => {
+          if (!mergedProducts.some(mp => mp.id === doc.id)) {
+            mergedProducts.push({ id: doc.id, ...doc.data() } as Product);
+          }
+        });
+
+        setProducts(mergedProducts);
+      });
+    }, (error) => {
+      console.error("Error listening to products collection:", error);
+    });
+
+    return () => unsubscribe();
+  }, [setProducts]);
+
+  return (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
@@ -113,7 +170,7 @@ const App = () => (
           <Route path="/payment-confirmation" element={<ProtectedRoute><PaymentConfirmation /></ProtectedRoute>} />
           <Route path="/payments" element={<ProtectedRoute><Payments /></ProtectedRoute>} />
           <Route path="/shipment" element={<ProtectedRoute><Shipment /></ProtectedRoute>} />
-          <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
+          <Route path="/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
           <Route path="/shastika-chatbot" element={<ProtectedRoute><ShastikaChatbot /></ProtectedRoute>} />
           <Route path="/verification" element={<ProtectedRoute><Verification /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
@@ -124,13 +181,16 @@ const App = () => (
           <Route path="/farmer/requests" element={<FarmerRoute><FarmerRequestsNew /></FarmerRoute>} />
           <Route path="/farmer/payments" element={<FarmerRoute><FarmerPayments /></FarmerRoute>} />
           <Route path="/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
+          <Route path="/admin-dashboard" element={<StandaloneAdminRoute><AdminDashboardNew /></StandaloneAdminRoute>} />
           <Route path="/admin/products" element={<AdminRoute><AdminProducts /></AdminRoute>} />
           <Route path="/admin/update-products" element={<AdminRoute><AdminUpdateProducts /></AdminRoute>} />
+          <Route path="/admin/add-product" element={<AdminRoute><FarmerAddProduct /></AdminRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </HashRouter>
     </TooltipProvider>
   </QueryClientProvider>
-);
+  );
+};
 
 export default App;

@@ -36,8 +36,6 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
     ? [
         ...navItems,
         { path: '/farmer/add-product', label: t('add_product', 'Add Product'), icon: PlusCircle },
-        { path: '/farmer/requests', label: t('purchase_requests', 'Purchase Requests'), icon: ClipboardList },
-        { path: '/farmer/payments', label: t('payment_status', 'Payment Status'), icon: CreditCard },
       ]
     : currentUser?.role === 'buyer'
     ? [

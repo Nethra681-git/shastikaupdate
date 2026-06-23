@@ -96,10 +96,12 @@ const Shipment = () => {
   if (loading) {
     return (
       <div className="space-y-8 animate-fade-in">
-        <div>
-          <h1 className="text-4xl font-bold text-foreground mb-2">{t('shipment_tracking')}</h1>
-          <p className="text-muted-foreground">{t('shipment_monitor_realtime')}</p>
-        </div>
+        {!isAdmin && (
+          <div>
+            <h1 className="text-4xl font-bold text-foreground mb-2">{t('shipment_tracking')}</h1>
+            <p className="text-muted-foreground">{t('shipment_monitor_realtime')}</p>
+          </div>
+        )}
         <div className="space-y-4">
           {[1, 2].map(i => (
             <div key={i} className="premium-card rounded-2xl p-8 animate-pulse">
@@ -118,8 +120,12 @@ const Shipment = () => {
 
       {/* Header */}
       <div>
-        <h1 className="text-4xl font-bold text-foreground mb-2">{t('shipment_tracking')}</h1>
-        <p className="text-muted-foreground">{t('shipment_monitor_realtime')}</p>
+        {!isAdmin && (
+          <>
+            <h1 className="text-4xl font-bold text-foreground mb-2">{t('shipment_tracking')}</h1>
+            <p className="text-muted-foreground">{t('shipment_monitor_realtime')}</p>
+          </>
+        )}
         <div className="mt-3 flex flex-wrap gap-4 text-sm text-muted-foreground">
           <span>UID: <span className="font-mono font-semibold text-foreground">{uid ?? '—'}</span></span>
           <span>Email: <span className="font-semibold text-foreground">{email ?? '—'}</span></span>

@@ -1,293 +1,346 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useStore } from '@/lib/store';
-import { useLocation } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
-import { ChatSidebar } from '@/components/ChatSidebar';
-import { ChatWindow } from '@/components/ChatWindow';
-import {
-  initSocket,
-  registerUserLogin,
-  sendMessage as sendChatMessage,
-  onMessageReceive,
-  onOnlineUsersUpdate,
-  onChatHistoryResponse,
-  requestChatHistory,
-  ChatMessage,
-  Conversation,
+import { 
+  initSocket, 
+  registerUserLogin, 
+  onMessageReceive, 
+  onOnlineUsersUpdate, 
+  sendMessage as sendSocketMessage,
   ChatUser,
-  disconnectSocket,
+  disconnectSocket
 } from '@/lib/socketService';
+import { 
+  subscribeToConversations, 
+  subscribeToMessages, 
+  sendMessage as sendFirestoreMessage,
+  getChatUsers,
+  Conversation
+} from '@/lib/messageService';
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { storage } from "@/lib/firebase";
+import ChatSidebar from '@/components/chat/ChatSidebar';
+import ChatWindow from '@/components/chat/ChatWindow';
 
-const Chat = () => {
-  const { t } = useTranslation();
-  const { currentUser } = useStore();
-  const location = useLocation();
+export interface PendingFile {
+  file: File;
+  preview?: string;
+  type: "image" | "document";
+}
 
-  // Chat state
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
+const MAX_FILES = 5;
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const COMPRESSION_QUALITY = 0.7;
+const MAX_IMAGE_WIDTH = 1200;
+const ALLOWED_TYPES = [
+  "image/jpeg", "image/png", "image/gif", "image/webp",
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+];
 
-  // Messages state
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [messageInput, setMessageInput] = useState('');
-
-  // UI state
-  const [loading, setLoading] = useState(false);
-  const [sending, setSending] = useState(false);
-  const [onlineUsers, setOnlineUsers] = useState<ChatUser[]>([]);
-
-  // Store the pre-selected user from navigation state
-  const preSelectedUser = (location.state as any)?.selectedUser;
-
-  // Initialize Socket.io connection
-  useEffect(() => {
-    const initializeChat = async () => {
-      if (!currentUser?.id) {
-        return;
-      }
-
-      setLoading(true);
-
-      try {
-        // Initialize Socket.io (optional - will fall back to Firestore)
-        console.log('🚀 Initializing chat for:', currentUser.name);
-        await initSocket();
-
-        // Register user login (optional)
-        try {
-          registerUserLogin({
-            userId: currentUser.id,
-            role: currentUser.role,
-            name: currentUser.name,
-            email: currentUser.email,
-          });
-          console.log('✅ Chat initialized with socket');
-        } catch (socketError) {
-          console.warn('⚠️ Socket registration failed, but app will work with Firestore:', socketError);
-        }
-
-        console.log('✅ Chat ready for:', currentUser.name);
-      } catch (error) {
-        console.warn('⚠️ Socket initialization failed:', error);
-        console.log('📡 App will use Firestore for real-time updates');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    initializeChat();
-
-    // Cleanup on unmount
-    return () => {
-      disconnectSocket();
-    };
-  }, [currentUser?.id]);
-
-  // Listen for online users updates
-  useEffect(() => {
-    const unsubscribe = onOnlineUsersUpdate((users) => {
-      setOnlineUsers(users);
-
-      // Build conversations from online users based on role
-      const newConversations: Conversation[] = [];
-
-      if (currentUser?.role === 'admin') {
-        // Admin sees all users (farmers + buyers)
-        const eligibleUsers = users.filter(
-          (u) => u.userId !== currentUser.id && (u.role === 'farmer' || u.role === 'buyer')
-        );
-
-        eligibleUsers.forEach((user) => {
-          newConversations.push({
-            userId: user.userId,
-            userName: user.name,
-            userRole: user.role,
-            lastMessage: '',
-            lastMessageTime: null,
-            lastMessageSender: '',
-            unreadCount: 0,
-            online: true,
-          });
-        });
-      } else {
-        // Farmer/Buyer sees only admins
-        const adminUsers = users.filter(
-          (u) => u.userId !== currentUser?.id && u.role === 'admin'
-        );
-
-        adminUsers.forEach((user) => {
-          newConversations.push({
-            userId: user.userId,
-            userName: user.name,
-            userRole: user.role,
-            lastMessage: '',
-            lastMessageTime: null,
-            lastMessageSender: '',
-            unreadCount: 0,
-            online: true,
-          });
-        });
-      }
-
-      setConversations(newConversations);
-
-      // Auto-select pre-selected user from navigation state if provided
-      if (preSelectedUser && !selectedConversation) {
-        const foundConversation = newConversations.find(
-          (conv) => conv.userId === preSelectedUser.userId
-        );
-        if (foundConversation) {
-          setSelectedConversation(foundConversation);
-          requestChatHistory(currentUser!.id, foundConversation.userId);
-        }
-      } else if (newConversations.length > 0 && !selectedConversation && !preSelectedUser) {
-        // Auto-select first conversation if none selected and no pre-selected user
-        setSelectedConversation(newConversations[0]);
-        requestChatHistory(currentUser!.id, newConversations[0].userId);
-      }
-    });
-
-    return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
-    };
-  }, [currentUser?.id, currentUser?.role, preSelectedUser, selectedConversation]);
-
-  // Listen for incoming messages
-  useEffect(() => {
-    const unsubscribe = onMessageReceive((message) => {
-      // Only add message if it's from selected conversation
-      if (
-        selectedConversation &&
-        (message.senderId === selectedConversation.userId ||
-          message.receiverId === selectedConversation.userId)
-      ) {
-        setMessages((prev) => {
-          // Avoid duplicates
-          if (prev.some((m) => m.id === message.id)) {
-            return prev;
-          }
-          return [...prev, message];
-        });
-
-        // Update conversation last message
-        setConversations((prev) =>
-          prev.map((conv) => {
-            if (conv.userId === message.senderId || conv.userId === message.receiverId) {
-              return {
-                ...conv,
-                lastMessage: message.message,
-                lastMessageTime: new Date(),
-                lastMessageSender: message.senderName,
-              };
-            }
-            return conv;
-          })
-        );
-      }
-    });
-
-    return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
-    };
-  }, [selectedConversation]);
-
-  // Listen for chat history response
-  useEffect(() => {
-    const unsubscribe = onChatHistoryResponse((data) => {
-      // Sort messages by timestamp
-      const sortedMessages = data.messages.sort(
-        (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-      );
-      setMessages(sortedMessages);
-    });
-
-    return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
-    };
-  }, []);
-
-  // Handle sending message
-  const handleSendMessage = () => {
-    if (
-      !messageInput.trim() ||
-      !currentUser ||
-      !selectedConversation ||
-      sending
-    ) {
+function compressImage(file: File): Promise<File> {
+  return new Promise((resolve) => {
+    if (!file.type.startsWith("image/")) {
+      resolve(file);
       return;
     }
 
-    setSending(true);
-    const messageText = messageInput.trim();
+    const img = new window.Image();
+    const url = URL.createObjectURL(file);
 
-    sendChatMessage({
-      senderUserId: currentUser.id,
-      receiverUserId: selectedConversation.userId,
-      message: messageText,
-      senderName: currentUser.name,
-      senderRole: currentUser.role,
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      if (width <= MAX_IMAGE_WIDTH) {
+        resolve(file);
+        return;
+      }
+      const ratio = MAX_IMAGE_WIDTH / width;
+      width = MAX_IMAGE_WIDTH;
+      height = Math.round(height * ratio);
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, 0, 0, width, height);
+
+      canvas.toBlob(
+        (blob) => {
+          if (blob) {
+            resolve(new File([blob], file.name, { type: file.type, lastModified: Date.now() }));
+          } else {
+            resolve(file);
+          }
+        },
+        file.type,
+        COMPRESSION_QUALITY
+      );
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(file);
+    };
+    img.src = url;
+  });
+}
+
+async function uploadFile(file: File, chatId: string) {
+  const timestamp = Date.now();
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const path = `chat-attachments/${chatId}/${timestamp}_${safeName}`;
+  const storageRef = ref(storage, path);
+
+  const processedFile = file.type.startsWith("image/") ? await compressImage(file) : file;
+  await uploadBytes(storageRef, processedFile);
+  const url = await getDownloadURL(storageRef);
+
+  return {
+    attachmentUrl: url,
+    attachmentType: file.type.startsWith("image/") ? "image" : "document",
+    attachmentName: file.name,
+  };
+}
+
+export default function Chat() {
+  const { currentUser } = useStore();
+  
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
+  const [messages, setMessages] = useState<any[]>([]);
+  const [search, setSearch] = useState("");
+  const [messageText, setMessageText] = useState("");
+  const [sending, setSending] = useState(false);
+  const [onlineUsers, setOnlineUsers] = useState<ChatUser[]>([]);
+  const [allUsers, setAllUsers] = useState<Conversation[]>([]);
+  const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
+  const [uploadProgress, setUploadProgress] = useState(false);
+
+  // Init Socket
+  useEffect(() => {
+    if (!currentUser) return;
+    
+    let isMounted = true;
+    const setupSocket = async () => {
+      const socket = await initSocket();
+      if (!isMounted) return;
+      
+      registerUserLogin({
+        userId: currentUser.id,
+        role: currentUser.role,
+        name: currentUser.name,
+        email: currentUser.email
+      });
+
+      const unsubOnline = onOnlineUsersUpdate((users) => {
+        setOnlineUsers(users);
+      });
+
+      const unsubMsg = onMessageReceive((msg) => {
+        // If message is for currently selected conversation, append it
+        setMessages(prev => {
+          // Prevent duplicates if also coming from Firestore
+          if (prev.some(m => m.id === msg.id)) return prev;
+          return [...prev, msg];
+        });
+      });
+
+      return () => {
+        if (unsubOnline) unsubOnline();
+        if (unsubMsg) unsubMsg();
+      };
+    };
+
+    const cleanupPromise = setupSocket();
+    
+    return () => {
+      isMounted = false;
+      cleanupPromise.then(cleanup => {
+        if (cleanup) cleanup();
+      });
+      disconnectSocket();
+    };
+  }, [currentUser]);
+
+  // Init Firestore subscriptions
+  useEffect(() => {
+    if (!currentUser) return;
+
+    // Load all users first to populate the list immediately
+    getChatUsers(currentUser.id, currentUser.role as any).then((users) => {
+      const formattedUsers = users.map(u => ({
+        userId: u.id,
+        userName: u.name,
+        userRole: u.role,
+        lastMessage: "",
+        lastMessageTime: null,
+        lastMessageSender: "",
+        participants: [currentUser.id, u.id],
+        unreadCount: 0
+      }));
+      setAllUsers(formattedUsers);
     });
 
-    setMessageInput('');
-    setSending(false);
-
-    // Clear input and scroll to bottom (will happen automatically)
-  };
-
-  // Handle conversation selection
-  const handleSelectConversation = (conversation: Conversation) => {
-    setSelectedConversation(conversation);
-    setMessages([]); // Clear messages while loading
-    requestChatHistory(currentUser!.id, conversation.userId);
-  };
-
-  if (!currentUser) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <p>{t('login_to_place_orders')}</p>
-      </div>
+    const unsubConv = subscribeToConversations(
+      currentUser.id, 
+      currentUser.role as any, 
+      (convs) => setConversations(convs)
     );
-  }
+
+    return () => {
+      if (unsubConv) unsubConv();
+    };
+  }, [currentUser]);
+
+  // Merge conversations with allUsers
+  const displayConversations = React.useMemo(() => {
+    const merged = [...conversations];
+    allUsers.forEach(user => {
+      if (!merged.some(c => c.userId === user.userId)) {
+        merged.push(user);
+      }
+    });
+    return merged;
+  }, [conversations, allUsers]);
+
+  // Load messages for selected conversation
+  useEffect(() => {
+    if (!currentUser || !selectedConversation) {
+      setMessages([]);
+      return;
+    }
+
+    const unsubMsgs = subscribeToMessages(
+      currentUser.id,
+      (msgs) => {
+        setMessages(msgs);
+      },
+      selectedConversation.userId
+    );
+
+    return () => {
+      if (unsubMsgs) unsubMsgs();
+    };
+  }, [currentUser, selectedConversation]);
+
+  const handleSend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if ((!messageText.trim() && pendingFiles.length === 0) || !currentUser || !selectedConversation) return;
+
+    const text = messageText.trim();
+    setMessageText("");
+    setSending(true);
+    setUploadProgress(pendingFiles.length > 0);
+
+    try {
+      const chatId = [currentUser.id, selectedConversation.userId].sort().join("_");
+      
+      if (pendingFiles.length > 0) {
+        const uploads = await Promise.all(
+          pendingFiles.map((pf) => uploadFile(pf.file, chatId))
+        );
+
+        for (const attachment of uploads) {
+          sendSocketMessage({
+            senderUserId: currentUser.id,
+            receiverUserId: selectedConversation.userId,
+            message: text || "",
+            senderName: currentUser.name,
+            senderRole: currentUser.role,
+            attachmentUrl: attachment.attachmentUrl,
+            attachmentType: attachment.attachmentType,
+            attachmentName: attachment.attachmentName,
+          });
+
+          await sendFirestoreMessage(
+            currentUser.id,
+            currentUser.name,
+            selectedConversation.userId,
+            text || "",
+            attachment.attachmentUrl,
+            attachment.attachmentType,
+            attachment.attachmentName
+          );
+        }
+
+        pendingFiles.forEach((pf) => { if (pf.preview) URL.revokeObjectURL(pf.preview); });
+        setPendingFiles([]);
+      } else {
+        // 1. Send via Socket for speed
+        sendSocketMessage({
+          senderUserId: currentUser.id,
+          receiverUserId: selectedConversation.userId,
+          message: text,
+          senderName: currentUser.name,
+          senderRole: currentUser.role
+        });
+
+        // 2. Save to Firestore for persistence
+        await sendFirestoreMessage(
+          currentUser.id,
+          currentUser.name,
+          selectedConversation.userId,
+          text
+        );
+      }
+    } catch (error) {
+      console.error("Error sending message:", error);
+    } finally {
+      setSending(false);
+      setUploadProgress(false);
+    }
+  };
+
+  if (!currentUser) return null;
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] w-full bg-background rounded-2xl overflow-hidden shadow-lg">
-      {/* Sidebar */}
-      <div className="w-80 border-r">
-        <ChatSidebar
-          conversations={conversations}
-          onlineUsers={onlineUsers}
-          selectedConversation={selectedConversation}
-          onSelectConversation={handleSelectConversation}
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          loading={loading}
-        />
-      </div>
+    <div className="p-4 md:p-8 h-[calc(100vh-4rem)] bg-cover bg-center" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80)' }}>
+      <div className="h-[calc(100vh-8rem)] w-full max-w-6xl mx-auto bg-card/60 backdrop-blur-md rounded-2xl shadow-2xl overflow-hidden border border-white/10 flex">
+        
+        {/* Mobile: hide sidebar if conversation is selected */}
+        <div className={`h-full w-full md:w-80 shrink-0 ${selectedConversation ? 'hidden md:block' : 'block'}`}>
+          <ChatSidebar 
+            conversations={displayConversations}
+            search={search}
+            setSearch={setSearch}
+            selectedConversation={selectedConversation}
+            setSelectedConversation={setSelectedConversation}
+            onlineUsers={onlineUsers}
+          />
+        </div>
 
-      {/* Chat Window */}
-      <div className="flex-1">
-        <ChatWindow
-          conversation={selectedConversation}
-          messages={messages}
-          onlineUsers={onlineUsers}
-          currentUserId={currentUser.id}
-          currentUserName={currentUser.name}
-          messageInput={messageInput}
-          onMessageInputChange={setMessageInput}
-          onSendMessage={handleSendMessage}
-          sending={sending}
-          loading={loading}
-        />
+        {/* Mobile: hide window if no conversation is selected */}
+        <div className={`h-full flex-1 ${!selectedConversation ? 'hidden md:block' : 'block'}`}>
+          {selectedConversation ? (<ChatWindow 
+              currentUserId={currentUser.id}
+              selectedConversation={selectedConversation}
+              setSelectedConversation={setSelectedConversation}
+              messages={messages}
+              messageText={messageText}
+              setMessageText={setMessageText}
+              handleSend={handleSend}
+              sending={sending}
+              onlineUsers={onlineUsers}
+              pendingFiles={pendingFiles}
+              setPendingFiles={setPendingFiles}
+              uploadProgress={uploadProgress}
+              ALLOWED_TYPES={ALLOWED_TYPES}
+              MAX_FILES={MAX_FILES}
+              MAX_FILE_SIZE={MAX_FILE_SIZE}
+            />
+          ) : (
+            <div className="h-full flex flex-col items-center justify-center text-foreground/40 bg-black/10">
+              <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
+                <svg className="w-8 h-8 opacity-50 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+              </div>
+              <p className="text-white">Select a conversation to start messaging</p>
+            </div>
+          )}
+        </div>
+
       </div>
     </div>
   );
-};
-
-export default Chat;
+}
